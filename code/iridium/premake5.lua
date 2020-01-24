@@ -26,6 +26,7 @@ function iridium_component(name)
     exceptionhandling "Off"
     rtti "Off"
     warnings "Extra"
+    flags "FatalWarnings"
 
     useIrPCH()
     includeIridium()
