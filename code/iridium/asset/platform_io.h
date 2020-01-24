@@ -23,9 +23,9 @@ namespace Iridium
     // Returns a handle for file enumeration, or null on error
     Ptr<FindFileHandle> PlatformFindFiles(StringView path);
 
-    // Creates a temporary file
-    // Returns a handle to the temporary file, or null on error
-    Rc<Stream> PlatformTempFile();
+    // Creates a temporary stream
+    // Returns a handle to the temporary stream, or null on error
+    Rc<Stream> PlatformTempStream();
 
     // Creates a folder at the specified path
     // Returns whether the folder was succesfully created

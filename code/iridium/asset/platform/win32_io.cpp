@@ -486,7 +486,7 @@ namespace Iridium
         return MakeUnique<Win32FindFileHandle>(wpath);
     }
 
-    Rc<Stream> PlatformTempFile()
+    Rc<Stream> PlatformTempStream()
     {
         HANDLE handle = Win32TempFileCache::Instance.Open();
 
