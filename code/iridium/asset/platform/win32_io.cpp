@@ -406,7 +406,7 @@ namespace Iridium
 
     static inline bool Win32CreateFolder(const wchar_t* path)
     {
-        return CreateDirectoryW(path, NULL);
+        return CreateDirectoryW(path, NULL) || (GetLastError() == ERROR_ALREADY_EXISTS);
     }
 
     static inline bool Win32DeleteFile(const wchar_t* path)
@@ -509,11 +509,16 @@ namespace Iridium
         if (!recursive)
             return Win32CreateFolder(wpath);
 
+        bool exists = true;
+
         for (wchar_t* j = std::wcschr(wpath, L'\\'); j; j = std::wcschr(j + 1, L'\\'))
         {
             *j = L'\0';
 
-            if (!Win32FolderExists(wpath) && !Win32CreateFolder(wpath))
+            if (exists)
+                exists = Win32FolderExists(wpath);
+
+            if (!exists && !Win32CreateFolder(wpath))
                 return nullptr;
 
             *j = L'\\';
@@ -534,9 +539,9 @@ namespace Iridium
 
     bool PlatformDeleteFolder(StringView path)
     {
-        wchar_t wpath[MAX_PATH + 2];
+        wchar_t wpath[MAX_PATH];
 
-        usize converted = Win32ToNativePath(path, wpath, std::size(wpath) - 2);
+        usize converted = Win32ToNativePath(path, wpath, std::size(wpath));
 
         if (converted == 0)
             return false;
