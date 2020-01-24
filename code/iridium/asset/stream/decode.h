@@ -11,10 +11,10 @@ namespace Iridium
     public:
         DecodeStream(Rc<Stream> handle, Ptr<BinaryTransform> transform, i64 size, usize buffer_size = 0x2000);
 
-        i64 Seek(i64 offset, SeekWhence whence) override;
+        StreamPosition Seek(i64 offset, SeekWhence whence) override;
 
-        i64 Tell() override;
-        i64 Size() override;
+        StreamPosition Tell() override;
+        StreamPosition Size() override;
 
         usize Read(void* ptr, usize len) override;
 

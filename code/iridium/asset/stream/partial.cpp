@@ -2,7 +2,7 @@
 
 namespace Iridium
 {
-    PartialStream::PartialStream(i64 start, i64 size, const Rc<Stream>& handle)
+    PartialStream::PartialStream(u64 start, u64 size, const Rc<Stream>& handle)
         : start_(start)
         , size_(size)
         , here_(0)
@@ -15,7 +15,7 @@ namespace Iridium
         }
     }
 
-    i64 PartialStream::Seek(i64 offset, SeekWhence whence)
+    StreamPosition PartialStream::Seek(i64 offset, SeekWhence whence)
     {
         switch (whence)
         {
@@ -29,12 +29,12 @@ namespace Iridium
         return here_;
     }
 
-    i64 PartialStream::Tell()
+    StreamPosition PartialStream::Tell()
     {
         return here_;
     }
 
-    i64 PartialStream::Size()
+    StreamPosition PartialStream::Size()
     {
         return size_;
     }
@@ -48,7 +48,7 @@ namespace Iridium
         return result;
     }
 
-    usize PartialStream::ReadBulk(void* ptr, usize len, i64 offset)
+    usize PartialStream::ReadBulk(void* ptr, usize len, u64 offset)
     {
         return ReadInternal(ptr, len, offset);
     }
@@ -58,19 +58,17 @@ namespace Iridium
         return input_->IsBulkSync();
     }
 
-    Rc<Stream> PartialStream::GetBulkStream(i64& offset, i64 size)
+    Rc<Stream> PartialStream::GetBulkStream(u64& offset, u64 size)
     {
-        if (size <= size_)
-        {
-            offset += start_;
+        if ((offset + size) > size_)
+            return nullptr;
 
-            return input_;
-        }
+        offset += start_;
 
-        return nullptr;
+        return input_;
     }
 
-    usize PartialStream::ReadInternal(void* ptr, usize len, i64 offset)
+    usize PartialStream::ReadInternal(void* ptr, usize len, u64 offset)
     {
         if (offset < 0 || offset >= size_)
             return 0;

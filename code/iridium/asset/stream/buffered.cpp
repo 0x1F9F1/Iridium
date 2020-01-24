@@ -17,17 +17,12 @@ namespace Iridium
         FlushWrites();
     }
 
-    i64 BufferedStream::Size()
+    StreamPosition BufferedStream::Size()
     {
-        if (!FlushWrites())
-        {
-            return -1;
-        }
-
-        return RawSize();
+        return FlushWrites() ? RawSize() : StreamPosition();
     }
 
-    i64 BufferedStream::Seek(i64 offset, SeekWhence whence)
+    StreamPosition BufferedStream::Seek(i64 offset, SeekWhence whence)
     {
         if (SeekBuffer(offset, whence))
         {
@@ -43,7 +38,7 @@ namespace Iridium
         }
         else if (!FlushWrites())
         {
-            return -1;
+            return StreamPosition();
         }
 
         position_ = RawSeek(offset, whence);
@@ -56,7 +51,7 @@ namespace Iridium
 
     usize BufferedStream::Read(void* ptr, usize len)
     {
-        IrDebugAssert(position_ != -1, "Cannot read from unknown position");
+        IrDebugAssert(position_.valid(), "Cannot read from unknown position");
 
         if (!FlushWrites())
         {
@@ -111,7 +106,7 @@ namespace Iridium
 
     usize BufferedStream::Write(const void* ptr, usize len)
     {
-        IrDebugAssert(position_ != -1, "Cannot read from unknown position");
+        IrDebugAssert(position_.valid(), "Cannot read from unknown position");
 
         if (!FlushReads())
         {
@@ -165,26 +160,26 @@ namespace Iridium
         }
     }
 
-    usize BufferedStream::ReadBulk(void* ptr, usize len, i64 offset)
+    usize BufferedStream::ReadBulk(void* ptr, usize len, u64 offset)
     {
         if (!FlushWrites())
         {
             return 0;
         }
 
-        position_ = -1;
+        position_ = StreamPosition();
 
         return handle_->ReadBulk(ptr, len, offset);
     }
 
-    usize BufferedStream::WriteBulk(const void* ptr, usize len, i64 offset)
+    usize BufferedStream::WriteBulk(const void* ptr, usize len, u64 offset)
     {
         if (!FlushWrites())
         {
             return 0;
         }
 
-        position_ = -1;
+        position_ = StreamPosition();
 
         return handle_->WriteBulk(ptr, len, offset);
     }
@@ -274,17 +269,17 @@ namespace Iridium
         return FlushBuffer() && RawFlush();
     }
 
-    inline i64 BufferedStream::RawTell() const
+    inline StreamPosition BufferedStream::RawTell() const
     {
         return handle_->Tell();
     }
 
-    inline i64 BufferedStream::RawSize() const
+    inline StreamPosition BufferedStream::RawSize() const
     {
         return handle_->Size();
     }
 
-    inline i64 BufferedStream::RawSeek(i64 offset, SeekWhence whence)
+    inline StreamPosition BufferedStream::RawSeek(i64 offset, SeekWhence whence)
     {
         return handle_->Seek(offset, whence);
     }
@@ -301,12 +296,12 @@ namespace Iridium
 
     inline bool BufferedStream::SeekBuffer(i64 offset, SeekWhence whence)
     {
-        if (buffer_read_ == 0)
+        if (buffer_read_ == 0 || !position_.valid())
             return false;
 
         switch (whence)
         {
-            case SeekWhence::Set: offset -= position_; break;
+            case SeekWhence::Set: offset -= position_.get(); break;
             case SeekWhence::Cur: offset += buffer_head_; break;
             case SeekWhence::End: return false;
         }
@@ -326,14 +321,14 @@ namespace Iridium
 
     inline bool BufferedStream::FlushReads()
     {
-        if (buffer_read_ != 0 && buffer_read_ != buffer_head_)
+        if (buffer_read_ != 0 && buffer_read_ != buffer_head_ && position_.valid())
         {
-            position_ = RawSeek(position_ + buffer_head_, SeekWhence::Set);
+            position_ = RawSeek(position_.get() + buffer_head_, SeekWhence::Set);
 
             buffer_head_ = 0;
             buffer_read_ = 0;
 
-            return position_ != -1;
+            return position_.valid();
         }
         else
         {

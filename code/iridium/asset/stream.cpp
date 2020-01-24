@@ -23,9 +23,9 @@ namespace Iridium
         DWORD SetFilePointer(HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD dwMoveMethod);
         BOOL SetFilePointerEx(HANDLE hFile, LARGE_INTEGER liDistanceToMove, PLARGE_INTEGER lpNewFilePointer, DWORD dwMoveMethod);
     */
-    i64 Stream::Seek(i64, SeekWhence)
+    StreamPosition Stream::Seek(i64, SeekWhence)
     {
-        return -1;
+        return StreamPosition();
     }
 
     /*
@@ -35,7 +35,7 @@ namespace Iridium
 
         SetFilePointer(hFile, 0, NULL, FILE_CURRENT);
     */
-    i64 Stream::Tell()
+    StreamPosition Stream::Tell()
     {
         return Seek(0, SeekWhence::Cur);
     }
@@ -47,16 +47,15 @@ namespace Iridium
 
         BOOL GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
     */
-    i64 Stream::Size()
+    StreamPosition Stream::Size()
     {
-        // TODO: Should this just return 0 or -1 instead?
+        StreamPosition const here = Tell();
+        StreamPosition const size = Seek(0, SeekWhence::End);
 
-        i64 const here = Tell();
-        i64 const result = Seek(0, SeekWhence::End);
+        if (here.valid())
+            Seek(here.get(), SeekWhence::Set);
 
-        Seek(here, SeekWhence::Set);
-
-        return result;
+        return size;
     }
 
     /*
@@ -88,7 +87,7 @@ namespace Iridium
 
         BOOL ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
     */
-    usize Stream::ReadBulk(void* ptr, usize len, i64 offset)
+    usize Stream::ReadBulk(void* ptr, usize len, u64 offset)
     {
         return (Seek(offset, SeekWhence::Set) == offset) ? Read(ptr, len) : 0;
     }
@@ -98,7 +97,7 @@ namespace Iridium
 
         BOOL WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
     */
-    usize Stream::WriteBulk(const void* ptr, usize len, i64 offset)
+    usize Stream::WriteBulk(const void* ptr, usize len, u64 offset)
     {
         return (Seek(offset, SeekWhence::Set) == offset) ? Write(ptr, len) : 0;
     }
@@ -121,9 +120,9 @@ namespace Iridium
 
         BOOL SetEndOfFile(HANDLE hFile);
     */
-    i64 Stream::SetSize(i64)
+    StreamPosition Stream::SetSize(u64)
     {
-        return -1;
+        return StreamPosition();
     }
 
     usize Stream::CopyTo(Stream& output)
@@ -150,7 +149,7 @@ namespace Iridium
         return total;
     }
 
-    Rc<Stream> Stream::GetBulkStream(i64&, i64)
+    Rc<Stream> Stream::GetBulkStream(u64&, u64)
     {
         return nullptr;
     }
@@ -183,19 +182,16 @@ namespace Iridium
 
     Rc<Stream> Stream::Temp()
     {
-        return PlatformTempFile();
+        return PlatformTempStream();
     }
 
     String Stream::ReadText()
     {
-        i64 const here = Tell();
+        u64 const here = Tell().get(0);
+        u64 const size = Size().get(0) - here;
 
-        // IrAssert(here != -1);
-
-        i64 const size = Size();
-
-        // IrAssert(size != -1);
-        // IrAssert(here <= size);
+        if ((here >= size) || ((size - here) > SIZE_MAX))
+            return {};
 
         usize const maximum = static_cast<usize>(size - here);
 
@@ -220,14 +216,11 @@ namespace Iridium
 
     Vec<u8> Stream::ReadBytes()
     {
-        i64 const here = Tell();
+        u64 const here = Tell().get(0);
+        u64 const size = Size().get(0) - here;
 
-        // IrAssert(here != -1);
-
-        i64 const size = Size();
-
-        // IrAssert(size != -1);
-        // IrAssert(here <= size);
+        if ((here >= size) || ((size - here) > SIZE_MAX))
+            return {};
 
         usize const maximum = static_cast<usize>(size - here);
 

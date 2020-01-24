@@ -12,20 +12,20 @@ namespace Iridium
         Win32FileStreamBase(HANDLE handle);
         ~Win32FileStreamBase() override = 0;
 
-        i64 Seek(i64 offset, SeekWhence whence) override;
+        StreamPosition Seek(i64 offset, SeekWhence whence) override;
 
-        i64 Tell() override;
-        i64 Size() override;
+        StreamPosition Tell() override;
+        StreamPosition Size() override;
 
         usize Read(void* ptr, usize len) override;
         usize Write(const void* ptr, usize len) override;
 
-        usize ReadBulk(void* ptr, usize len, i64 offset) override;
-        usize WriteBulk(const void* ptr, usize len, i64 offset) override;
+        usize ReadBulk(void* ptr, usize len, u64 offset) override;
+        usize WriteBulk(const void* ptr, usize len, u64 offset) override;
 
         bool Flush() override;
 
-        i64 SetSize(i64 length) override;
+        StreamPosition SetSize(u64 length) override;
 
         bool IsBulkSync() override;
         bool IsFullSync() override;
@@ -146,7 +146,7 @@ namespace Iridium
 
     Win32FileStreamBase::~Win32FileStreamBase() = default;
 
-    i64 Win32FileStreamBase::Seek(i64 offset, SeekWhence whence)
+    StreamPosition Win32FileStreamBase::Seek(i64 offset, SeekWhence whence)
     {
         LARGE_INTEGER distance;
         distance.QuadPart = offset;
@@ -163,10 +163,13 @@ namespace Iridium
             case SeekWhence::End: method = FILE_END; break;
         }
 
-        return SetFilePointerEx(handle_, distance, &result, method) ? result.QuadPart : -1;
+        if (SetFilePointerEx(handle_, distance, &result, method))
+            return result.QuadPart;
+
+        return StreamPosition();
     }
 
-    i64 Win32FileStreamBase::Tell()
+    StreamPosition Win32FileStreamBase::Tell()
     {
         LARGE_INTEGER distance;
         distance.QuadPart = 0;
@@ -174,15 +177,21 @@ namespace Iridium
         LARGE_INTEGER result;
         result.QuadPart = 0;
 
-        return SetFilePointerEx(handle_, distance, &result, FILE_CURRENT) ? result.QuadPart : -1;
+        if (SetFilePointerEx(handle_, distance, &result, FILE_CURRENT))
+            return result.QuadPart;
+
+        return StreamPosition();
     }
 
-    i64 Win32FileStreamBase::Size()
+    StreamPosition Win32FileStreamBase::Size()
     {
         LARGE_INTEGER result;
         result.QuadPart = 0;
 
-        return GetFileSizeEx(handle_, &result) ? result.QuadPart : -1;
+        if (GetFileSizeEx(handle_, &result))
+            return result.QuadPart;
+
+        return StreamPosition();
     }
 
     usize Win32FileStreamBase::Read(void* ptr, usize len)
@@ -203,12 +212,12 @@ namespace Iridium
         return WriteFile(handle_, ptr, static_cast<DWORD>(len), &result, nullptr) ? result : 0;
     }
 
-    usize Win32FileStreamBase::ReadBulk(void* ptr, usize len, i64 offset)
+    usize Win32FileStreamBase::ReadBulk(void* ptr, usize len, u64 offset)
     {
         OVERLAPPED overlapped {};
 
         overlapped.Offset = offset & 0xFFFFFFFF;
-        overlapped.OffsetHigh = u64(offset) >> 32;
+        overlapped.OffsetHigh = offset >> 32;
 
         DWORD result = 0;
 
@@ -217,12 +226,12 @@ namespace Iridium
         return ReadFile(handle_, ptr, static_cast<DWORD>(len), &result, &overlapped) ? result : 0;
     }
 
-    usize Win32FileStreamBase::WriteBulk(const void* ptr, usize len, i64 offset)
+    usize Win32FileStreamBase::WriteBulk(const void* ptr, usize len, u64 offset)
     {
         OVERLAPPED overlapped {};
 
         overlapped.Offset = offset & 0xFFFFFFFF;
-        overlapped.OffsetHigh = u64(offset) >> 32;
+        overlapped.OffsetHigh = offset >> 32;
 
         DWORD result = 0;
 
@@ -236,7 +245,7 @@ namespace Iridium
         return FlushFileBuffers(handle_);
     }
 
-    i64 Win32FileStreamBase::SetSize(i64 length)
+    StreamPosition Win32FileStreamBase::SetSize(u64 length)
     {
         LARGE_INTEGER distance;
         distance.QuadPart = length;
@@ -244,10 +253,11 @@ namespace Iridium
         LARGE_INTEGER result;
         result.QuadPart = 0;
 
-        return (SetFilePointerEx(handle_, distance, &result, FILE_BEGIN) && (result.QuadPart == length) &&
-                   SetEndOfFile(handle_))
-            ? length
-            : -1;
+        if (SetFilePointerEx(handle_, distance, &result, FILE_BEGIN) && (static_cast<u64>(result.QuadPart) == length) &&
+            SetEndOfFile(handle_))
+            return length;
+
+        return StreamPosition();
     }
 
     bool Win32FileStreamBase::IsBulkSync()
@@ -308,7 +318,7 @@ namespace Iridium
             entry.Name = "**Invalid**"_sv;
 
         entry.IsFolder = data_.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
-        entry.Size = data_.nFileSizeLow | u64(data_.nFileSizeHigh) << 32;
+        entry.Size = data_.nFileSizeLow | static_cast<u64>(data_.nFileSizeHigh) << 32;
 
         valid_ = FindNextFileW(handle_, &data_);
 

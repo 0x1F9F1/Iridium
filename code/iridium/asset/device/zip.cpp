@@ -188,7 +188,7 @@ namespace Iridium
 
     bool ZipArchive::FindEndOfCentralDirectory()
     {
-        i64 const size = input_->Size();
+        u64 const size = input_->Size().get(0);
 
         if (size < sizeof(ZIPENDLOCATOR))
             return false;
