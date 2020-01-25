@@ -40,7 +40,7 @@ namespace Iridium
 #define IrEnabledAssert(CONDITION, MESSAGE)                                                                    \
     do                                                                                                         \
     {                                                                                                          \
-        if (!(CONDITION))                                                                                      \
+        if (IR_UNLIKELY(!(CONDITION)))                                                                         \
         {                                                                                                      \
             static const ::Iridium::IrAssertData ir_assert_data {                                              \
                 #CONDITION, MESSAGE, IRIDIUM_FILE, IRIDIUM_FUNCTION, static_cast<unsigned int>(IRIDIUM_LINE)}; \
@@ -48,11 +48,7 @@ namespace Iridium
         }                                                                                                      \
     } while (false);
 
-#define IrDisabledAssert(CONDITION, MESSAGE) \
-    do                                       \
-    {                                        \
-        (void) sizeof(!(CONDITION));         \
-    } while (false);
+#define IrDisabledAssert(CONDITION, MESSAGE) static_cast<void>(sizeof(!(CONDITION)));
 
 #ifdef IRIDIUM_DEBUG
 #    define IrDebugAssert IrEnabledAssert

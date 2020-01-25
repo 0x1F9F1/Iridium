@@ -8,6 +8,7 @@ iridium_component "IrCore"
         excludes { "platform/minwin.h" }
     filter {}
 
+    includeHedley()
     includeFmt()
     includeSpdlog()
 

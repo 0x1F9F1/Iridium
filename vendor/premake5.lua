@@ -5,6 +5,7 @@ VENDOR_DIR = os.getcwd()
 FMT_DIR = path.join(VENDOR_DIR, "fmt")
 SPDLOG_DIR = path.join(VENDOR_DIR, "spdlog")
 ZLIB_DIR = path.join(VENDOR_DIR, "zlib")
+HEDLEY_DIR = path.join(VENDOR_DIR, "hedley")
 
 function includeFmt()
     includedirs { path.join(FMT_DIR, "include") }
@@ -16,6 +17,10 @@ end
 
 function includeZlib()
     includedirs { ZLIB_DIR }
+end
+
+function includeHedley()
+    includedirs { HEDLEY_DIR }
 end
 
 project "*"

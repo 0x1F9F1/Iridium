@@ -3,6 +3,7 @@ IRIDIUM_DIR = os.getcwd()
 function includeIridium()
     includedirs { IRIDIUM_DIR }
 
+    includeHedley()
     includeFmt()
     includeSpdlog()
 end
