@@ -5,25 +5,30 @@ namespace Iridium
     class StreamPosition
     {
     public:
-        inline constexpr StreamPosition() = default;
+        IR_FORCEINLINE constexpr StreamPosition() = default;
 
-        inline constexpr StreamPosition(u64 value)
+        IR_FORCEINLINE constexpr StreamPosition(u64 value)
             : value_(value)
         {}
 
-        inline constexpr i64 get() const
+        IR_FORCEINLINE constexpr i64 get() const
         {
             return static_cast<i64>(value_);
         }
 
-        inline constexpr u64 get(u64 default_value) const
+        IR_FORCEINLINE constexpr u64 get(u64 default_value) const
         {
             return (value_ != UINT64_MAX) ? value_ : default_value;
         }
 
-        inline constexpr bool valid() const
+        IR_FORCEINLINE constexpr bool valid() const
         {
             return value_ != UINT64_MAX;
+        }
+
+        IR_FORCEINLINE static constexpr StreamPosition Checked(i64 value)
+        {
+            return (value >= 0) ? StreamPosition(static_cast<u64>(value)) : StreamPosition();
         }
 
         friend constexpr bool operator==(StreamPosition lhs, StreamPosition rhs);
@@ -33,52 +38,49 @@ namespace Iridium
         friend constexpr bool operator>(StreamPosition lhs, StreamPosition rhs);
         friend constexpr bool operator>=(StreamPosition lhs, StreamPosition rhs);
 
-        friend constexpr StreamPosition operator+(StreamPosition lhs, StreamPosition rhs);
-        friend constexpr StreamPosition& operator+=(StreamPosition& lhs, StreamPosition rhs);
+        friend constexpr StreamPosition operator+(StreamPosition lhs, i64 rhs);
+        friend constexpr StreamPosition& operator+=(StreamPosition& lhs, i64 rhs);
 
     private:
         u64 value_ {UINT64_MAX};
     };
 
-    inline constexpr bool operator==(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator==(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ == rhs.value_;
     }
 
-    inline constexpr bool operator!=(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator!=(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ != rhs.value_;
     }
 
-    inline constexpr bool operator<(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator<(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ < rhs.value_;
     }
 
-    inline constexpr bool operator<=(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator<=(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ <= rhs.value_;
     }
 
-    inline constexpr bool operator>(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator>(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ > rhs.value_;
     }
 
-    inline constexpr bool operator>=(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr bool operator>=(StreamPosition lhs, StreamPosition rhs)
     {
         return lhs.value_ >= rhs.value_;
     }
 
-    inline constexpr StreamPosition operator+(StreamPosition lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr StreamPosition operator+(StreamPosition lhs, i64 rhs)
     {
-        if (lhs.valid() && rhs.valid())
-            return StreamPosition(lhs.value_ + rhs.value_);
-
-        return StreamPosition();
+        return lhs.valid() ? StreamPosition::Checked(lhs.get() + rhs) : StreamPosition();
     }
 
-    inline constexpr StreamPosition& operator+=(StreamPosition& lhs, StreamPosition rhs)
+    IR_FORCEINLINE constexpr StreamPosition& operator+=(StreamPosition& lhs, i64 rhs)
     {
         lhs = lhs + rhs;
 
