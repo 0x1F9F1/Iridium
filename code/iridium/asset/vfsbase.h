@@ -9,7 +9,6 @@ namespace Iridium
     class VirtualFileSystemBase
     {
     public:
-        bool AddVirtualFile(StringView name, Rc<Stream> data);
         StringView GetString(StringHeap::Handle handle);
 
         bool Exists(StringView path);
@@ -32,7 +31,6 @@ namespace Iridium
         enum class NodeType : u8
         {
             Folder,
-            Virtual,
             FileT,
         };
 
@@ -64,7 +62,12 @@ namespace Iridium
             // Next file in current folder
             FileNode* Next {nullptr};
 
-            using Node::Node;
+            Rc<Stream> Data {nullptr};
+
+            inline FileNode(StringHash hash, StringHeap::Handle name, NodeType type, Rc<Stream> data)
+                : Node(hash, name, type)
+                , Data(std::move(data))
+            {}
         };
 
         struct FolderNode : Node
@@ -90,16 +93,6 @@ namespace Iridium
             }
 
             bool Unlink(Node* node);
-        };
-
-        struct VirtualFileNode : FileNode
-        {
-            Rc<Stream> File;
-
-            inline VirtualFileNode(StringHash hash, StringHeap::Handle name, Rc<Stream> file)
-                : FileNode(hash, name, NodeType::Virtual)
-                , File(std::move(file))
-            {}
         };
 
         FolderNode* root_ {nullptr};

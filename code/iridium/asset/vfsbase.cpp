@@ -117,25 +117,6 @@ namespace Iridium
     VirtualFileSystemBase::VirtualFileSystemBase() = default;
     VirtualFileSystemBase::~VirtualFileSystemBase() = default;
 
-    bool VirtualFileSystemBase::AddVirtualFile(StringView name, Rc<Stream> data)
-    {
-        if (name.empty() || name.back() == '/')
-            return false;
-
-        auto [node, hash] = FindNode(name);
-
-        if (node != nullptr)
-            return false;
-
-        auto [dir_name, file_name] = SplitPath(name);
-
-        VirtualFileNode* new_node = new VirtualFileNode {hash, names_.AddString(file_name), std::move(data)};
-        GetFolderNode(dir_name, true)->AddFile(new_node);
-        LinkNodeHash(new_node);
-
-        return true;
-    }
-
     usize VirtualFileSystemBase::GetNextCapacity(usize capacity)
     {
         usize result = bucket_count_ ? bucket_count_ : 32;
@@ -306,12 +287,13 @@ namespace Iridium
 
     void VirtualFileSystemBase::DeleteNode(Node* node)
     {
-        switch (node->Type)
+        if (node->Type == NodeType::Folder)
         {
-            case NodeType::Folder: delete static_cast<FolderNode*>(node); break;
-            case NodeType::Virtual: delete static_cast<VirtualFileNode*>(node); break;
-
-            default: IrDebugAssert(false, "Invalid Node Type"); break;
+            delete static_cast<FolderNode*>(node);
+        }
+        else
+        {
+            IrDebugAssert(false, "Invalid Node Type");
         }
     }
 

@@ -12,7 +12,7 @@ namespace Iridium
     public:
         ~VirtualFileSystem() override;
 
-        bool AddFile(StringView name, T entry);
+        bool AddFile(StringView name, T entry, Rc<Stream> data = nullptr, bool override = false);
 
         template <typename F>
         Rc<Stream> Open(StringView path, bool read_only, F callback);
@@ -26,8 +26,8 @@ namespace Iridium
     private:
         struct FileNodeT : FileNode
         {
-            inline FileNodeT(StringHash hash, StringHeap::Handle name, T entry)
-                : FileNode(hash, name, NodeType::FileT)
+            inline FileNodeT(StringHash hash, StringHeap::Handle name, T entry, Rc<Stream> data)
+                : FileNode(hash, name, NodeType::FileT, std::move(data))
                 , Entry(std::move(entry))
             {}
 
@@ -38,7 +38,7 @@ namespace Iridium
         class VirtualFindFileHandle;
 
         void DeleteNode(Node* node) override;
-
+        FileNodeT* AddFileNode(StringView name, T entry, Rc<Stream> data, bool override);
         Rc<Stream> ConvertToVirtualNode(StringView path, FileNodeT* node, Rc<Stream> input);
     };
 
@@ -49,23 +49,9 @@ namespace Iridium
     }
 
     template <typename T>
-    inline bool VirtualFileSystem<T>::AddFile(StringView name, T entry)
+    inline bool VirtualFileSystem<T>::AddFile(StringView name, T entry, Rc<Stream> data, bool override)
     {
-        if (name.empty() || name.back() == '/')
-            return false;
-
-        auto [node, hash] = FindNode(name);
-
-        if (node != nullptr)
-            return false;
-
-        auto [dir_name, file_name] = SplitPath(name);
-
-        FileNodeT* new_node = new FileNodeT {hash, names_.AddString(file_name), std::move(entry)};
-        GetFolderNode(dir_name, true)->AddFile(new_node);
-        LinkNodeHash(new_node);
-
-        return true;
+        return AddFileNode(name, std::move(entry), std::move(data), override) != nullptr;
     }
 
     template <typename T>
@@ -74,32 +60,28 @@ namespace Iridium
     {
         auto [node, hash] = FindNode(path);
 
-        if (node == nullptr)
+        if (node == nullptr || node->Type != NodeType::FileT)
             return nullptr;
 
-        switch (node->Type)
+        FileNodeT* fnode = static_cast<FileNodeT*>(node);
+
+        Rc<Stream> result = fnode->Data;
+
+        if (result != nullptr)
         {
-            case NodeType::Virtual:
-            {
-                Rc<Stream> result = static_cast<VirtualFileNode*>(node)->File;
-                result->Seek(0, SeekWhence::Set);
-                return result;
-            }
-
-            case NodeType::FileT:
-            {
-                Rc<Stream> result = callback(path, static_cast<FileNodeT*>(node)->Entry);
-
-                if (!read_only && result != nullptr)
-                {
-                    result = ConvertToVirtualNode(path, static_cast<FileNodeT*>(node), std::move(result));
-                }
-
-                return result;
-            }
-
-            default: return nullptr;
+            result->Seek(0, SeekWhence::Set);
         }
+        else
+        {
+            result = callback(path, fnode->Entry);
+
+            if (!read_only && result != nullptr)
+            {
+                result = ConvertToVirtualNode(path, fnode, std::move(result));
+            }
+        }
+
+        return result;
     }
 
     template <typename T>
@@ -109,34 +91,15 @@ namespace Iridium
         auto [node, hash] = FindNode(path);
 
         if (node == nullptr)
-        {
             return ConvertToVirtualNode(path, nullptr, nullptr);
-        }
 
-        switch (node->Type)
-        {
-            case NodeType::Virtual:
-            {
-                Rc<Stream> result = static_cast<VirtualFileNode*>(node)->File;
+        if (node->Type != NodeType::FileT)
+            return nullptr;
 
-                if (truncate)
-                {
-                    result->SetSize(0);
-                }
+        FileNodeT* fnode = static_cast<FileNodeT*>(node);
 
-                result->Seek(0, SeekWhence::Set);
-
-                return result;
-            }
-
-            case NodeType::FileT:
-            {
-                return ConvertToVirtualNode(path, static_cast<FileNodeT*>(node),
-                    !truncate ? callback(path, static_cast<FileNodeT*>(node)->Entry) : nullptr);
-            }
-
-            default: return nullptr;
-        }
+        return ConvertToVirtualNode(path, fnode,
+            !truncate ? callback(path, fnode->Entry) : nullptr);
     }
 
     template <typename T>
@@ -172,18 +135,17 @@ namespace Iridium
             {
                 entry.Name = names_->GetString(files_->Name);
 
-                switch (files_->Type)
+                if (files_->Type == NodeType::FileT)
                 {
-                    case NodeType::FileT:
-                    {
-                        callback_(static_cast<FileNodeT*>(files_)->Entry, entry);
-                        break;
-                    }
+                    FileNodeT* fnode = static_cast<FileNodeT*>(files_);
 
-                    case NodeType::Virtual:
+                    if (fnode->Data != nullptr)
                     {
-                        entry.Size = static_cast<VirtualFileNode*>(files_)->File->Size().get(0);
-                        break;
+                        entry.Size = fnode->Data->Size().get(0);
+                    }
+                    else
+                    {
+                        callback_(fnode->Entry, entry);
                     }
                 }
 
@@ -216,6 +178,39 @@ namespace Iridium
     };
 
     template <typename T>
+    inline typename VirtualFileSystem<T>::FileNodeT* VirtualFileSystem<T>::AddFileNode(
+        StringView name, T entry, Rc<Stream> data, bool override)
+    {
+        if (name.empty() || name.back() == '/')
+            return nullptr;
+
+        const auto [node, hash] = FindNode(name);
+
+        if (node != nullptr)
+        {
+            if (override && node->Type == NodeType::FileT)
+            {
+                FileNodeT* fnode = static_cast<FileNodeT*>(node);
+
+                fnode->Entry = std::move(entry);
+                fnode->Data = std::move(data);
+
+                return fnode;
+            }
+
+            return nullptr;
+        }
+
+        const auto [dir_name, file_name] = SplitPath(name);
+
+        FileNodeT* fnode = new FileNodeT {hash, names_.AddString(file_name), std::move(entry), std::move(data)};
+        GetFolderNode(dir_name, true)->AddFile(fnode);
+        LinkNodeHash(fnode);
+
+        return fnode;
+    }
+
+    template <typename T>
     void VirtualFileSystem<T>::DeleteNode(Node* node)
     {
         if (node->Type == NodeType::FileT)
@@ -227,7 +222,22 @@ namespace Iridium
     template <typename T>
     inline Rc<Stream> VirtualFileSystem<T>::ConvertToVirtualNode(StringView path, FileNodeT* node, Rc<Stream> input)
     {
-        Rc<Stream> result = Stream::Temp();
+        if (node == nullptr)
+        {
+            node = AddFileNode(path, T {}, nullptr, true);
+        }
+
+        if (node->Data == nullptr)
+        {
+            node->Data = Stream::Temp();
+        }
+        else
+        {
+            node->Data->SetSize(0);
+            node->Data->Seek(0, SeekWhence::Set);
+        }
+
+        Rc<Stream> result = node->Data;
 
         if (input != nullptr)
         {
@@ -235,13 +245,6 @@ namespace Iridium
             input = nullptr;
             result->Seek(0, SeekWhence::Set);
         }
-
-        if (node != nullptr)
-        {
-            RemoveNode(node);
-        }
-
-        AddVirtualFile(path, result);
 
         return result;
     }
