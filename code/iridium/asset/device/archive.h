@@ -12,6 +12,7 @@ namespace Iridium
         FileArchive(Rc<Stream> input);
 
         Rc<Stream> Open(StringView path, bool read_only) override;
+        Rc<Stream> Create(StringView path, bool write_only, bool truncate) override;
 
         bool Exists(StringView path) override;
 
@@ -33,6 +34,8 @@ namespace Iridium
 
             CompressorId Compression {};
         };
+
+        Rc<Stream> OpenEntry(StringView path, BasicFileEntry& entry);
 
         VirtualFileSystem<BasicFileEntry> vfs_;
     };

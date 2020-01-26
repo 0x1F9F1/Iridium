@@ -17,24 +17,14 @@ namespace Iridium
 
     Rc<Stream> FileArchive::Open(StringView path, bool read_only)
     {
-        if (!read_only)
-            return nullptr;
+        return vfs_.Open(
+            path, read_only, [this](StringView path, BasicFileEntry& entry) { return OpenEntry(path, entry); });
+    }
 
-        BasicFileEntry* entry = vfs_.FindFile(path);
-
-        if (entry == nullptr)
-            return nullptr;
-
-        switch (entry->Compression)
-        {
-            case CompressorId::Stored: return MakeRc<PartialStream>(entry->Offset, entry->Size, input_);
-
-            case CompressorId::Deflate:
-                return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry->Offset, entry->RawSize, input_),
-                    MakeUnique<InflateTransform>(), entry->Size);
-        }
-
-        return nullptr;
+    Rc<Stream> FileArchive::Create(StringView path, bool /*write_only*/, bool truncate)
+    {
+        return vfs_.Create(
+            path, truncate, [this](StringView path, BasicFileEntry& entry) { return OpenEntry(path, entry); });
     }
 
     bool FileArchive::Exists(StringView path)
@@ -63,6 +53,20 @@ namespace Iridium
     void FileArchive::Finalize()
     {
         // vfs_.CompactNames();
+    }
+
+    Rc<Stream> FileArchive::OpenEntry(StringView /*path*/, BasicFileEntry& entry)
+    {
+        switch (entry.Compression)
+        {
+            case CompressorId::Stored: return MakeRc<PartialStream>(entry.Offset, entry.Size, input_);
+
+            case CompressorId::Deflate:
+                return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry.Offset, entry.RawSize, input_),
+                    MakeUnique<InflateTransform>(), entry.Size);
+        }
+
+        return nullptr;
     }
 
     template class VirtualFileSystem<FileArchive::BasicFileEntry>;

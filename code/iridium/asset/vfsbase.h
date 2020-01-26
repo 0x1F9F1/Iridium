@@ -4,39 +4,44 @@
 
 namespace Iridium
 {
+    class Stream;
+
     class VirtualFileSystemBase
     {
     public:
-        void CompactNames();
-        void Reserve(usize capacity);
-        bool Exists(StringView path);
+        bool AddVirtualFile(StringView name, Rc<Stream> data);
+        StringView GetString(StringHeap::Handle handle);
 
-        StringView GetString(StringHeap::Handle handle)
-        {
-            return names_.GetString(handle);
-        }
+        bool Exists(StringView path);
+        void Reserve(usize capacity);
+        void CompactNames();
+        void Clear();
 
     private:
         VirtualFileSystemBase();
-        ~VirtualFileSystemBase();
-
         VirtualFileSystemBase(const VirtualFileSystemBase&) = delete;
         VirtualFileSystemBase& operator=(const VirtualFileSystemBase&) = delete;
+
+        virtual ~VirtualFileSystemBase() = 0;
 
         template <typename T>
         friend class VirtualFileSystem;
 
-        // TODO: Optimize Node layouts for size/speed
-
         struct FolderNode;
+
+        enum class NodeType : u8
+        {
+            Folder,
+            Virtual,
+            FileT,
+        };
 
         struct Node
         {
             // Hash of full file path
             StringHash Hash {};
 
-            // Is this node a folder
-            bool IsFolder {false};
+            NodeType Type {};
 
             // Next node in current hash bucket
             Node* HashNext {nullptr};
@@ -47,9 +52,9 @@ namespace Iridium
             // Parent folder
             FolderNode* Parent {nullptr};
 
-            inline Node(StringHash hash, StringHeap::Handle name, bool is_folder)
+            inline Node(StringHash hash, StringHeap::Handle name, NodeType type)
                 : Hash(hash)
-                , IsFolder(is_folder)
+                , Type(type)
                 , Name(name)
             {}
         };
@@ -59,12 +64,10 @@ namespace Iridium
             // Next file in current folder
             FileNode* Next {nullptr};
 
-            inline FileNode(StringHash hash, StringHeap::Handle name)
-                : Node(hash, name, false)
-            {}
+            using Node::Node;
         };
 
-        struct FolderNode : VirtualFileSystemBase::Node
+        struct FolderNode : Node
         {
             // Next folder in current folder
             FolderNode* Next {nullptr};
@@ -75,11 +78,28 @@ namespace Iridium
             FolderNode* Folders {nullptr};
 
             inline FolderNode(StringHash hash, StringHeap::Handle name)
-                : Node(hash, name, true)
+                : Node(hash, name, NodeType::Folder)
             {}
 
             void AddFile(FileNode* node);
             void AddFolder(FolderNode* node);
+
+            inline bool IsEmpty() const
+            {
+                return (Files == nullptr) && (Folders == nullptr);
+            }
+
+            bool Unlink(Node* node);
+        };
+
+        struct VirtualFileNode : FileNode
+        {
+            Rc<Stream> File;
+
+            inline VirtualFileNode(StringHash hash, StringHeap::Handle name, Rc<Stream> file)
+                : FileNode(hash, name, NodeType::Virtual)
+                , File(std::move(file))
+            {}
         };
 
         FolderNode* root_ {nullptr};
@@ -90,17 +110,26 @@ namespace Iridium
 
         StringHeap names_;
 
-        Pair<Node*, StringHash> FindNode(StringView name);
-
-        FolderNode* CreateFolderNode(StringView name);
-
         usize GetNextCapacity(usize capacity);
+        void ResizeBuckets(usize new_capacity);
+        FolderNode* GetFolderNode(StringView name, bool create);
 
-        void AddNode(Node* node);
-        void LinkNodeInternal(Node* node);
+        void LinkNodeHash(Node* node);
+        void UnlinkNodeHash(Node* node);
+
+        void RemoveNode(Node* node);
 
         bool NodePathEqual(const Node* n, StringView path);
+        Pair<Node*, StringHash> FindNode(StringView name);
+
+        virtual void DeleteNode(Node* node) = 0;
     };
 
     Pair<StringView, StringView> ParentPath(StringView path);
+    Pair<StringView, StringView> SplitPath(StringView name);
+
+    inline StringView VirtualFileSystemBase::GetString(StringHeap::Handle handle)
+    {
+        return names_.GetString(handle);
+    }
 } // namespace Iridium

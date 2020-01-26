@@ -1,9 +1,75 @@
 #include "vfsbase.h"
 
 #include "findhandle.h"
+#include "stream.h"
 
 namespace Iridium
 {
+    bool VirtualFileSystemBase::Exists(StringView path)
+    {
+        return FindNode(path).first != nullptr;
+    }
+
+    void VirtualFileSystemBase::Reserve(usize capacity)
+    {
+        capacity += (capacity >> 2);
+
+        if (capacity < bucket_count_)
+            return;
+
+        ResizeBuckets(capacity);
+    }
+
+    void VirtualFileSystemBase::CompactNames()
+    {
+        if (bucket_count_ == 0)
+            return;
+
+        StringHeap names;
+        HashMap<StringView, StringHeap::Handle> handles;
+
+        handles.reserve(node_count_);
+
+        for (usize i = 0; i < bucket_count_; ++i)
+        {
+            for (Node* n = buckets_[i]; n; n = n->HashNext)
+            {
+                StringView const name = names_.GetString(n->Name);
+
+                auto find = handles.find(name);
+
+                if (find == handles.end())
+                    find = handles.emplace_hint(find, name, names.AddString(name));
+
+                n->Name = find->second;
+            }
+        }
+
+        names_ = std::move(names);
+    }
+
+    void VirtualFileSystemBase::Clear()
+    {
+        usize total = 0;
+
+        for (usize i = 0; i < bucket_count_; ++i)
+        {
+            for (Node *n = buckets_[i], *next = nullptr; n; n = next, ++total)
+            {
+                next = n->HashNext;
+                DeleteNode(n);
+            }
+        }
+
+        IrDebugAssert(total == node_count_, "Node count mismatch");
+
+        buckets_.reset();
+        bucket_count_ = 0;
+
+        node_count_ = 0;
+        names_.Clear();
+    }
+
     void VirtualFileSystemBase::FolderNode::AddFile(FileNode* node)
     {
         IrAssert(node->Parent == nullptr, "Node already has a parent");
@@ -20,10 +86,57 @@ namespace Iridium
         node->Next = std::exchange(Folders, node);
     }
 
+    bool VirtualFileSystemBase::FolderNode::Unlink(Node* node)
+    {
+        if (node->Type == NodeType::Folder)
+        {
+            for (FolderNode** here = &Folders; *here; here = &(*here)->Next)
+            {
+                if (*here == node)
+                {
+                    *here = std::exchange((*here)->Next, nullptr);
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            for (FileNode** here = &Files; *here; here = &(*here)->Next)
+            {
+                if (*here == node)
+                {
+                    *here = std::exchange((*here)->Next, nullptr);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     VirtualFileSystemBase::VirtualFileSystemBase() = default;
     VirtualFileSystemBase::~VirtualFileSystemBase() = default;
 
-    inline usize VirtualFileSystemBase::GetNextCapacity(usize capacity)
+    bool VirtualFileSystemBase::AddVirtualFile(StringView name, Rc<Stream> data)
+    {
+        if (name.empty() || name.back() == '/')
+            return false;
+
+        auto [node, hash] = FindNode(name);
+
+        if (node != nullptr)
+            return false;
+
+        auto [dir_name, file_name] = SplitPath(name);
+
+        VirtualFileNode* new_node = new VirtualFileNode {hash, names_.AddString(file_name), std::move(data)};
+        GetFolderNode(dir_name, true)->AddFile(new_node);
+        LinkNodeHash(new_node);
+
+        return true;
+    }
+
+    usize VirtualFileSystemBase::GetNextCapacity(usize capacity)
     {
         usize result = bucket_count_ ? bucket_count_ : 32;
 
@@ -33,26 +146,116 @@ namespace Iridium
         return result;
     }
 
-    void VirtualFileSystemBase::AddNode(Node* node)
+    void VirtualFileSystemBase::ResizeBuckets(usize new_capacity)
+    {
+        new_capacity = GetNextCapacity(new_capacity);
+
+        Ptr<Node*[]> old_buckets = std::exchange(buckets_, MakeUnique<Node*[]>(new_capacity));
+        usize old_capacity = std::exchange(bucket_count_, new_capacity);
+
+        usize total = 0;
+
+        for (usize i = 0; i < old_capacity; ++i)
+        {
+            for (Node *n = old_buckets[i], *next = nullptr; n; n = next)
+            {
+                next = n->HashNext;
+                n->HashNext = std::exchange(buckets_[n->Hash.Value & (bucket_count_ - 1)], n);
+                ++total;
+            }
+        }
+
+        IrDebugAssert(total == node_count_, "Node count mismatch");
+    }
+
+    VirtualFileSystemBase::FolderNode* VirtualFileSystemBase::GetFolderNode(StringView name, bool create)
+    {
+        auto [node, hash] = FindNode(name);
+
+        if (node != nullptr)
+        {
+            IrAssert(node->Type == NodeType::Folder, "Found file node, expected folder");
+
+            return static_cast<FolderNode*>(node);
+        }
+
+        if (!create)
+            return false;
+
+        auto [parent_path, folder_name] = ParentPath(name);
+
+        FolderNode* new_node = new FolderNode {hash, names_.AddString(name)};
+
+        if (name.empty())
+        {
+            IrDebugAssert(root_ == nullptr, "Root node already exists");
+
+            root_ = new_node;
+        }
+        else
+        {
+            GetFolderNode(parent_path, true)->AddFolder(new_node);
+        }
+
+        LinkNodeHash(new_node);
+
+        return new_node;
+    }
+
+    void VirtualFileSystemBase::LinkNodeHash(Node* node)
     {
         Reserve(node_count_ + 1);
-        LinkNodeInternal(node);
+        node->HashNext = std::exchange(buckets_[node->Hash.Value & (bucket_count_ - 1)], node);
         ++node_count_;
     }
 
-    void VirtualFileSystemBase::LinkNodeInternal(Node* node)
+    void VirtualFileSystemBase::UnlinkNodeHash(Node* node)
     {
-        IrDebugAssert(bucket_count_ != 0, "Cannot link node to map with no buckets");
+        if (bucket_count_ == 0)
+            return;
 
-        node->HashNext = std::exchange(buckets_[node->Hash.Value & (bucket_count_ - 1)], node);
+        for (Node** n = &buckets_[node->Hash.Value & (bucket_count_ - 1)]; *n; n = &(*n)->HashNext)
+        {
+            if (*n == node)
+            {
+                *n = std::exchange(node->HashNext, nullptr);
+                --node_count_;
+                return;
+            }
+        }
+    }
+
+    void VirtualFileSystemBase::RemoveNode(Node* node)
+    {
+        if (node == nullptr)
+            return;
+
+        if (node->Type == NodeType::Folder)
+        {
+            IrAssert(!static_cast<FolderNode*>(node)->IsEmpty(), "Cannot remove non-empty folder node");
+        }
+
+        if (node->Parent != nullptr)
+        {
+            node->Parent->Unlink(node);
+            node->Parent = nullptr;
+        }
+        else
+        {
+            IrAssert(node == root_, "Invalid Root Node");
+            root_ = nullptr;
+        }
+
+        UnlinkNodeHash(node);
+        DeleteNode(node);
     }
 
     bool VirtualFileSystemBase::NodePathEqual(const Node* n, StringView path)
     {
-        if (n->IsFolder != (path.empty() || path.back() == '/'))
+        if ((n->Type == NodeType::Folder) != (path.empty() || path.back() == '/'))
             return false;
 
-        if (!n->IsFolder)
+        if (n->Type != NodeType::Folder)
         {
             StringView file_name = names_.GetString(n->Name);
 
@@ -74,34 +277,6 @@ namespace Iridium
         return PathCompareEqual(path, names_.GetString(n->Name));
     }
 
-    void VirtualFileSystemBase::CompactNames()
-    {
-        if (bucket_count_ == 0)
-            return;
-
-        StringHeap names;
-        HashMap<StringView, StringHeap::Handle> handles;
-
-        handles.reserve(node_count_);
-
-        for (usize i = 0; i < bucket_count_; ++i)
-        {
-            for (Node* j = buckets_[i]; j; j = j->HashNext)
-            {
-                StringView const name = names_.GetString(j->Name);
-
-                auto find = handles.find(name);
-
-                if (find == handles.end())
-                    find = handles.emplace_hint(find, name, names.AddString(name));
-
-                j->Name = find->second;
-            }
-        }
-
-        names_ = std::move(names);
-    }
-
     Pair<VirtualFileSystemBase::Node*, StringHash> VirtualFileSystemBase::FindNode(StringView name)
     {
         StringHash hash = StringHash::HashIdent(name);
@@ -111,6 +286,7 @@ namespace Iridium
             Node** bucket = &buckets_[hash.Value & (bucket_count_ - 1)];
 
             for (Node *n = *bucket, *prev = nullptr; n; prev = n, n = n->HashNext)
+            {
                 if (n->Hash == hash && NodePathEqual(n, name))
                 {
                     if (prev)
@@ -122,9 +298,21 @@ namespace Iridium
 
                     return {n, hash};
                 }
+            }
         }
 
         return {nullptr, hash};
+    }
+
+    void VirtualFileSystemBase::DeleteNode(Node* node)
+    {
+        switch (node->Type)
+        {
+            case NodeType::Folder: delete static_cast<FolderNode*>(node); break;
+            case NodeType::Virtual: delete static_cast<VirtualFileNode*>(node); break;
+
+            default: IrDebugAssert(false, "Invalid Node Type"); break;
+        }
     }
 
     Pair<StringView, StringView> ParentPath(StringView path)
@@ -143,65 +331,15 @@ namespace Iridium
         return {path.substr(0, split), path.substr(split, length - split)};
     }
 
-    VirtualFileSystemBase::FolderNode* VirtualFileSystemBase::CreateFolderNode(StringView name)
+    Pair<StringView, StringView> SplitPath(StringView name)
     {
-        auto [node, hash] = FindNode(name);
+        usize split = name.rfind('/');
 
-        if (node != nullptr)
-        {
-            IrAssert(node->IsFolder, "Found file node, expected folder");
-
-            return static_cast<FolderNode*>(node);
-        }
-
-        auto [parent_path, folder_name] = ParentPath(name);
-
-        FolderNode* new_node = new FolderNode {hash, names_.AddString(name)};
-
-        if (name.empty())
-        {
-            IrDebugAssert(root_ == nullptr, "Root node already exists");
-
-            root_ = new_node;
-        }
+        if (split == StringView::npos)
+            split = 0;
         else
-        {
-            CreateFolderNode(parent_path)->AddFolder(new_node);
-        }
+            split += 1;
 
-        AddNode(new_node);
-
-        return new_node;
-    }
-
-    void VirtualFileSystemBase::Reserve(usize capacity)
-    {
-        capacity += (capacity >> 2);
-
-        if (capacity < bucket_count_)
-            return;
-
-        capacity = GetNextCapacity(capacity);
-
-        Ptr<Node*[]> buckets = MakeUnique<Node*[]>(capacity);
-
-        capacity = std::exchange(bucket_count_, capacity);
-
-        buckets_.swap(buckets);
-
-        usize total = 0;
-
-        for (usize i = 0; i < capacity; ++i)
-            for (Node* n = buckets[i]; n; LinkNodeInternal(std::exchange(n, n->HashNext)))
-                ++total;
-
-        IrDebugAssert(total == node_count_, "Node count mismatch");
-    }
-
-    bool VirtualFileSystemBase::Exists(StringView path)
-    {
-        auto [node, hash] = FindNode(path);
-
-        return node != nullptr;
+        return {name.substr(0, split), name.substr(split)};
     }
 } // namespace Iridium

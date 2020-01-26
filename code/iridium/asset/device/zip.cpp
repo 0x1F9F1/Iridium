@@ -117,37 +117,14 @@ namespace Iridium
 
     Rc<Stream> ZipArchive::Open(StringView path, bool read_only)
     {
-        if (!read_only)
-            return nullptr;
+        return vfs_.Open(
+            path, read_only, [this](StringView path, ZipFileEntry& entry) { return OpenEntry(path, entry); });
+    }
 
-        ZipFileEntry* entry = vfs_.FindFile(path);
-
-        if (entry == nullptr)
-            return nullptr;
-
-        if (entry->Offset == -1)
-        {
-            ZIPFILERECORD record;
-
-            if (input_->ReadBulk(&record, sizeof(record), entry->HeaderOffset) != sizeof(record))
-                return nullptr;
-
-            if (record.Signature != 0x04034B50)
-                return nullptr;
-
-            entry->Offset = entry->HeaderOffset + sizeof(record) + record.FileNameLength + record.ExtraFieldLength;
-        }
-
-        switch (entry->Compression)
-        {
-            case CompressorId::Stored: return MakeRc<PartialStream>(entry->Offset, entry->Size, input_);
-
-            case CompressorId::Deflate:
-                return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry->Offset, entry->RawSize, input_),
-                    MakeUnique<InflateTransform>(), entry->Size);
-        }
-
-        return nullptr;
+    Rc<Stream> ZipArchive::Create(StringView path, bool /*write_only*/, bool truncate)
+    {
+        return vfs_.Create(
+            path, truncate, [this](StringView path, ZipFileEntry& entry) { return OpenEntry(path, entry); });
     }
 
     bool ZipArchive::Exists(StringView path)
@@ -354,6 +331,33 @@ namespace Iridium
         }
 
         return true;
+    }
+
+    Rc<Stream> ZipArchive::OpenEntry(StringView /*path*/, ZipFileEntry& entry)
+    {
+        if (entry.Offset == -1)
+        {
+            ZIPFILERECORD record;
+
+            if (input_->ReadBulk(&record, sizeof(record), entry.HeaderOffset) != sizeof(record))
+                return nullptr;
+
+            if (record.Signature != 0x04034B50)
+                return nullptr;
+
+            entry.Offset = entry.HeaderOffset + sizeof(record) + record.FileNameLength + record.ExtraFieldLength;
+        }
+
+        switch (entry.Compression)
+        {
+            case CompressorId::Stored: return MakeRc<PartialStream>(entry.Offset, entry.Size, input_);
+
+            case CompressorId::Deflate:
+                return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry.Offset, entry.RawSize, input_),
+                    MakeUnique<InflateTransform>(), entry.Size);
+        }
+
+        return nullptr;
     }
 
     template class VirtualFileSystem<ZipArchive::ZipFileEntry>;
