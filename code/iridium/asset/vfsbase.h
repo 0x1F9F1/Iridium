@@ -39,13 +39,13 @@ namespace Iridium
             // Hash of full file path
             StringHash Hash {};
 
+            // Name
+            StringHeap::Handle Name {};
+
             NodeType Type {};
 
             // Next node in current hash bucket
             Node* HashNext {nullptr};
-
-            // Name
-            StringHeap::Handle Name {};
 
             // Parent folder
             FolderNode* Parent {nullptr};

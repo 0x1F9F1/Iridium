@@ -11,6 +11,8 @@ namespace Iridium
 
         void Save(Rc<Stream> output);
 
+        static void Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output);
+
     private:
         bool RefreshFileList();
     };

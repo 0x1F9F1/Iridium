@@ -14,7 +14,7 @@ namespace Iridium::bits
     template <typename T>
     struct packed
     {
-        u8 data[sizeof(T)];
+        u8 data[sizeof(T)] {};
 
         IR_FORCEINLINE operator T() const noexcept
         {

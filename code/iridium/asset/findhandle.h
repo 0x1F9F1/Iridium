@@ -31,5 +31,7 @@ namespace Iridium
     public:
         virtual ~FindFileHandle() = default;
         virtual bool Next(FolderEntry& entry) = 0;
+
+        Vec<String> GetFileNames();
     };
 } // namespace Iridium

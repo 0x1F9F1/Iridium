@@ -16,6 +16,8 @@ namespace Iridium
     bool PathCompareEqual(StringView lhs, StringView rhs);
     bool PathCompareLess(StringView lhs, StringView rhs);
 
+    bool PathCompareLess(const char* lhs, const char* rhs);
+
     void PathNormalizeSlash(String& path);
     void PathNormalizeSlash(char* path);
 

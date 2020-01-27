@@ -53,7 +53,7 @@ namespace Iridium
 
     bool PathCompareEqual(StringView lhs, StringView rhs)
     {
-        usize len = lhs.size();
+        usize const len = lhs.size();
 
         if (len != rhs.size())
             return false;
@@ -91,6 +91,20 @@ namespace Iridium
         }
 
         return l1 < l2;
+    }
+
+    bool PathCompareLess(const char* lhs, const char* rhs)
+    {
+        u8 i1 = '\0';
+        u8 i2 = '\0';
+
+        do
+        {
+            i1 = NormalizeCaseAndSlash[static_cast<unsigned char>(*lhs++)];
+            i2 = NormalizeCaseAndSlash[static_cast<unsigned char>(*rhs++)];
+        } while (i1 == i2);
+
+        return i1 < i2;
     }
 
     void PathNormalizeSlash(String& path)

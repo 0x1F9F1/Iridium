@@ -115,11 +115,6 @@ namespace Iridium
             return true;
         }
 
-        if (error == Z_BUF_ERROR && AvailIn == 0)
-        {
-            return true;
-        }
-
         return error == Z_OK;
     }
 } // namespace Iridium
