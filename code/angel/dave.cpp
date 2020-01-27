@@ -4,7 +4,8 @@
 
 #include "core/bits.h"
 
-#include <queue>
+#include "asset/stream/encode.h"
+#include "asset/transform/deflate.h"
 
 namespace Iridium
 {
@@ -196,7 +197,7 @@ namespace Iridium
                 return true;
             }
 
-            void Finalize(DaveArchive* archive, Stream& output)
+            void Finalize(DaveArchive* archive, Rc<Stream> output)
             {
                 u32 offset = 0x800;
 
@@ -212,7 +213,7 @@ namespace Iridium
 
                 header.NamesSize = static_cast<u32>(Names.size() * sizeof(char));
                 header.NamesOffset = offset;
-                output.WriteBulk(Names.data(), Names.size() * sizeof(char), header.NamesOffset);
+                output->WriteBulk(Names.data(), Names.size() * sizeof(char), header.NamesOffset);
                 header.NamesOffset -= 0x800;
 
                 offset += header.NamesSize;
@@ -220,21 +221,36 @@ namespace Iridium
 
                 for (DaveEntry& entry : Entries)
                 {
-                    if (Rc<Stream> input = archive->Open(GetString(entry.NameOffset), true))
+                    StringView file_name = GetString(entry.NameOffset);
+
+                    if (Rc<Stream> input = archive->Open(file_name, true))
                     {
                         u32 data_start = offset;
 
-                        output.Seek(data_start, SeekWhence::Set);
-                        input->CopyTo(output);
+                        u32 data_size = 0;
+                        u32 raw_size = 0;
 
-                        u32 data_end = static_cast<u32>(output.Tell().get(data_start));
-                        u32 data_size = data_end - data_start;
+                        {
+                            output->Seek(data_start, SeekWhence::Set);
+                            EncodeStream encoder(output, MakeUnique<DeflateTransform>());
+                            data_size = static_cast<u32>(input->CopyTo(encoder));
+                            encoder.Flush();
+                            raw_size = static_cast<u32>(encoder.Size().get(0));
+                        }
 
-                        offset = (data_end + 0x7FF) & ~u32(0x7FF);
+                        if (raw_size == data_size)
+                        {
+                            output->Seek(data_start, SeekWhence::Set);
+                            input = archive->Open(file_name, true);
+                            IrAssert(input->CopyTo(*output) == data_size, "Bad");
+                        }
+
+                        offset += raw_size;
+                        offset = (offset + 0x7FF) & ~u32(0x7FF);
 
                         entry.DataOffset = data_start;
                         entry.Size = data_size;
-                        entry.RawSize = data_size;
+                        entry.RawSize = raw_size;
                     }
                 }
 
@@ -242,13 +258,13 @@ namespace Iridium
                     return PathCompareLess(GetString(lhs.NameOffset), GetString(rhs.NameOffset));
                 });
 
-                output.WriteBulk(&header, sizeof(header), 0);
-                output.WriteBulk(Entries.data(), Entries.size() * sizeof(DaveEntry), entries_offset);
+                output->WriteBulk(&header, sizeof(header), 0);
+                output->WriteBulk(Entries.data(), Entries.size() * sizeof(DaveEntry), entries_offset);
             }
         } visitor;
 
         vfs_.Visit("", visitor);
 
-        visitor.Finalize(this, *output);
+        visitor.Finalize(this, output);
     }
 } // namespace Iridium

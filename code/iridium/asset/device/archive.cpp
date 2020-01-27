@@ -7,7 +7,7 @@
 #include "asset/stream/decode.h"
 #include "asset/stream/partial.h"
 
-#include "asset/transform/inflate.h"
+#include "asset/transform/deflate.h"
 
 namespace Iridium
 {

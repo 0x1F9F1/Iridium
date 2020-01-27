@@ -3,3 +3,5 @@ iridium_component "IrAngel"
         "**.cpp",
         "**.h",
     }
+
+    includeZlib()
