@@ -5,6 +5,80 @@
 
 namespace Iridium
 {
+    template <typename Node, typename F>
+    static inline Node* MergeLists(Node* pSrc1, Node* pSrc2, F& comparator)
+    {
+        Node* pDst = nullptr; /* destination head ptr */
+        Node** ppDst = &pDst; /* ptr to head or prev->next */
+
+        while (true)
+        {
+            if (pSrc1 == nullptr)
+            {
+                *ppDst = pSrc2;
+                break;
+            }
+
+            if (pSrc2 == nullptr)
+            {
+                *ppDst = pSrc1;
+                break;
+            }
+
+            if (comparator(pSrc2, pSrc1))
+            { /* if src2 < src1 */
+                *ppDst = pSrc2;
+                ppDst = &pSrc2->Next;
+                pSrc2 = pSrc2->Next;
+            }
+            else
+            { /* src1 <= src2 */
+                *ppDst = pSrc1;
+                ppDst = &pSrc1->Next;
+                pSrc1 = pSrc1->Next;
+            }
+        }
+
+        return pDst;
+    }
+
+    template <typename Node, typename F>
+    static inline Node* SortList(Node* pList, F comparator)
+    {
+        if (pList == nullptr) /* check for empty list */
+            return nullptr;
+
+        constexpr usize NumLists = 32;
+
+        Node* aList[NumLists] {}; /* array of lists */
+
+        for (Node *pNode = pList, *pNext = nullptr; pNode; pNode = pNext)
+        {
+            pNext = pNode->Next;
+            pNode->Next = nullptr;
+
+            usize i = 0;
+
+            for (; (i < NumLists) && (aList[i] != nullptr); ++i)
+            {
+                pNode = MergeLists(aList[i], pNode, comparator);
+                aList[i] = nullptr;
+            }
+
+            if (i == NumLists)
+                --i;
+
+            aList[i] = pNode;
+        }
+
+        Node* pNode = nullptr; /* merge array into one list */
+
+        for (usize i = 0; i < NumLists; i++)
+            pNode = MergeLists(aList[i], pNode, comparator);
+
+        return pNode;
+    }
+
     bool VirtualFileSystemBase::Exists(StringView path)
     {
         return FindNode(path).first != nullptr;
@@ -68,6 +142,45 @@ namespace Iridium
 
         node_count_ = 0;
         names_.Clear();
+    }
+
+    void VirtualFileSystemBase::Sort()
+    {
+        FolderNode* dnode = root_;
+        usize depth = 0;
+
+        const auto comparator = [this](Node* lhs, Node* rhs) {
+            return PathCompareLess(names_.GetString(lhs->Name), names_.GetString(rhs->Name));
+        };
+
+        while (dnode)
+        {
+            dnode->Files = SortList(dnode->Files, comparator);
+            dnode->Folders = SortList(dnode->Folders, comparator);
+
+            if (dnode->Folders)
+            {
+                dnode = dnode->Folders;
+                ++depth;
+                continue;
+            }
+
+            while (dnode && depth)
+            {
+                if (dnode->Next)
+                {
+                    dnode = dnode->Next;
+
+                    break;
+                }
+
+                dnode = dnode->Parent;
+                --depth;
+            }
+
+            if (depth == 0)
+                break;
+        };
     }
 
     void VirtualFileSystemBase::FolderNode::AddFile(FileNode* node)

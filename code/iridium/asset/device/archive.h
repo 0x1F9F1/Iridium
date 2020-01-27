@@ -19,13 +19,6 @@ namespace Iridium
         Ptr<FindFileHandle> Find(StringView path) override;
 
     protected:
-        Rc<Stream> input_;
-
-        void ReserveFiles(usize count);
-        void AddFile(StringView name, i64 offset, i64 size, i64 raw_size, CompressorId compression);
-        void Finalize();
-
-    private:
         struct BasicFileEntry
         {
             i64 Offset {0};
@@ -35,10 +28,17 @@ namespace Iridium
             CompressorId Compression {};
         };
 
+        Rc<Stream> input_;
+
+        using VFS = VirtualFileSystem<BasicFileEntry>;
+
+        VFS vfs_;
+
+        void ReserveFiles(usize count);
+        void AddFile(StringView name, i64 offset, i64 size, i64 raw_size, CompressorId compression);
+        void Finalize();
+
+    private:
         Rc<Stream> OpenEntry(StringView path, BasicFileEntry& entry);
-
-        VirtualFileSystem<BasicFileEntry> vfs_;
     };
-
-    extern template class VirtualFileSystem<FileArchive::BasicFileEntry>;
 } // namespace Iridium

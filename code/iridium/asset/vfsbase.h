@@ -4,8 +4,6 @@
 
 namespace Iridium
 {
-    class Stream;
-
     class VirtualFileSystemBase
     {
     public:
@@ -15,6 +13,8 @@ namespace Iridium
         void Reserve(usize capacity);
         void CompactNames();
         void Clear();
+
+        void Sort();
 
     private:
         VirtualFileSystemBase();
@@ -62,12 +62,7 @@ namespace Iridium
             // Next file in current folder
             FileNode* Next {nullptr};
 
-            Rc<Stream> Data {nullptr};
-
-            inline FileNode(StringHash hash, StringHeap::Handle name, NodeType type, Rc<Stream> data)
-                : Node(hash, name, type)
-                , Data(std::move(data))
-            {}
+            using Node::Node;
         };
 
         struct FolderNode : Node

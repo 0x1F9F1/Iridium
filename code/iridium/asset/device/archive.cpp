@@ -68,6 +68,4 @@ namespace Iridium
 
         return nullptr;
     }
-
-    template class VirtualFileSystem<FileArchive::BasicFileEntry>;
 } // namespace Iridium
