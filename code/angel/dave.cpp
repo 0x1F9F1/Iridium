@@ -8,7 +8,7 @@
 #include "asset/stream/partial.h"
 #include "asset/transform/deflate.h"
 
-namespace Iridium
+namespace Iridium::Angel
 {
     static void ReadDaveStringRaw(const Vec<char>& names, usize offset, u32 bit_index, String& output)
     {
@@ -137,6 +137,7 @@ namespace Iridium
         vfs_.Reserve(entries.size());
 
         String name;
+        name.reserve(128);
 
         for (const DaveEntry& entry : entries)
         {
@@ -268,4 +269,4 @@ namespace Iridium
         output->WriteBulk(&header, sizeof(header), 0);
         output->WriteBulk(entries.data(), entries.size() * sizeof(DaveEntry), toc_offset);
     }
-} // namespace Iridium
+} // namespace Iridium::Angel

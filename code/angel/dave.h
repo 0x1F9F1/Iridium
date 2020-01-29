@@ -3,7 +3,7 @@
 #include "asset/filedevice.h"
 #include "asset/vfs.h"
 
-namespace Iridium
+namespace Iridium::Angel
 {
     struct DaveHeader
     {
@@ -63,4 +63,4 @@ namespace Iridium
         VirtualFileSystem<DaveEntry> vfs_;
         Rc<Stream> input_;
     };
-} // namespace Iridium
+} // namespace Iridium::Angel

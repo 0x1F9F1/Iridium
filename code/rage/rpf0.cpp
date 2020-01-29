@@ -48,13 +48,13 @@ namespace Iridium::Rage
         if (header.Magic != 0x30465052)
             return false;
 
+        if (header.HeaderSize < (header.EntryCount * sizeof(fiPackEntry0)))
+            return false;
+
         Vec<fiPackEntry0> entries(header.EntryCount);
 
         if (input_->ReadBulk(entries.data(), entries.size() * sizeof(fiPackEntry0), 2048) !=
             entries.size() * sizeof(fiPackEntry0))
-            return false;
-
-        if (header.HeaderSize < (header.EntryCount * sizeof(fiPackEntry0)))
             return false;
 
         u32 names_length = header.HeaderSize - (header.EntryCount * sizeof(fiPackEntry0));
@@ -68,6 +68,7 @@ namespace Iridium::Rage
             names.emplace_back('\0');
 
         String path;
+        path.reserve(128);
         AddFile(entries, names, 0, path);
 
         return true;
