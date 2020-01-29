@@ -125,9 +125,9 @@ namespace Iridium
         return StreamPosition();
     }
 
-    usize Stream::CopyTo(Stream& output)
+    u64 Stream::CopyTo(Stream& output)
     {
-        usize total = 0;
+        u64 total = 0;
 
         u8 buffer[32768];
 

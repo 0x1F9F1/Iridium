@@ -30,6 +30,12 @@ namespace Iridium::bits
     };
 
     template <typename T>
+    IR_FORCEINLINE constexpr T align(T value, T alignment) noexcept
+    {
+        return (value + alignment - 1) & ~T(alignment - 1);
+    }
+
+    template <typename T>
     using le = T;
 
     template <typename T>

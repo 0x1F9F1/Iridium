@@ -4,6 +4,7 @@ namespace Iridium
 {
     enum class CompressorId : u8
     {
+        Invalid,
         Stored,
         Deflate,
         LZSS,

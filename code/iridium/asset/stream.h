@@ -59,7 +59,7 @@ namespace Iridium
 
         // Copies current stream contents to output
         // Returns number of bytes copied
-        virtual usize CopyTo(Stream& output);
+        virtual u64 CopyTo(Stream& output);
 
         // Retreives the underlying file handle usable for bulk operations
         // Returns the bulk file handle, and adjusts offset as required
