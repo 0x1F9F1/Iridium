@@ -62,12 +62,6 @@ namespace Iridium
     template <typename T>
     inline bool MultiFileDevice::VisitMountedDevices(StringView path, bool read_only, T callback)
     {
-        // TODO: Improve These Checks
-        if (path.find("..") != StringView::npos)
-        {
-            return false;
-        }
-
         for (auto it1 = mounts_.rbegin(); it1 != mounts_.rend(); ++it1)
         {
             if (StartsWith(path, it1->Prefix))

@@ -15,6 +15,8 @@ namespace Iridium
         : input_(std::move(input))
     {}
 
+    FileArchive::~FileArchive() = default;
+
     Rc<Stream> FileArchive::Open(StringView path, bool read_only)
     {
         return vfs_.Open(

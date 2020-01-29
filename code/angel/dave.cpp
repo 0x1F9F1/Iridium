@@ -10,11 +10,26 @@
 
 namespace Iridium::Angel
 {
-    static void ReadDaveStringRaw(const Vec<char>& names, usize offset, u32 bit_index, String& output)
+    static void ReadDaveString(const Vec<char>& names, usize offset, String& output)
     {
         // Modified base-64, using only 48 characters
-        static constexpr char DaveEncoding[48 + 16 + 1] {
-            "\0 #$()-./?0123456789_abcdefghijklmnopqrstuvwxyz~!!!!!!!!!!!!!!!!"};
+        static constexpr char DaveStringCharSet[48 + 16 + 1] {
+            "\0 #$()-./?0123456789_abcdefghijklmnopqrstuvwxyz~________________"};
+
+        u32 bit_index = 0;
+        u8 first = u8(names.at(offset));
+
+        if ((first & 0x3F) < 0x38)
+        {
+            output.clear();
+        }
+        else
+        {
+            u8 second = u8(names.at(offset + 1));
+            u8 index = (first & 0x7) | ((first & 0xC0) >> 3) | ((second & 0x7) << 5);
+            output.resize(index);
+            bit_index = 12;
+        }
 
         while (true)
         {
@@ -43,35 +58,101 @@ namespace Iridium::Angel
 
             bit_index += 6;
 
-            if (bits != 0)
-            {
-                output += DaveEncoding[bits];
-            }
-            else
-            {
+            if (bits == 0)
                 break;
-            }
+
+            output += DaveStringCharSet[bits];
         };
     }
 
-    static void ReadDaveString(const Vec<char>& names, usize offset, String& output)
+    static void WriteDaveString(Vec<char>& names, StringView name, StringView prev)
     {
-        u8 bits = 0;
-        u8 first = u8(names.at(offset));
+        // clang-format off
+        static constexpr u8 DaveStringLookup[256] {
+             0, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+             1, 48, 20,  2,  3, 20, 20, 20,  4,  5, 20, 20, 20,  6,  7,  8,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 20, 20, 20,  9, 
+            20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 20, 20, 20, 20, 20,
+            20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 20, 20, 20, 47, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20
+        };
+        // clang-format on
 
-        if ((first & 0x3F) < 0x38)
+        usize prefix = 0;
+
+        for (usize const max_prefix = std::min<usize>(std::min(name.size(), prev.size()), 0xFF); prefix < max_prefix;
+             ++prefix)
         {
-            output.clear();
+            if (DaveStringLookup[u8(name[prefix])] != DaveStringLookup[u8(prev[prefix])])
+                break;
+        }
+
+        u8 pending = 0;
+        u32 bit_index = 0;
+
+        if (prefix >= 2)
+        {
+            u8 first = (prefix & 0x7) | ((prefix & 0x18) << 3) | 0x38;
+            u8 second = (prefix & 0xE0) >> 5;
+
+            names.emplace_back(first);
+
+            pending = second;
+            bit_index = 12;
         }
         else
         {
-            u8 second = u8(names.at(offset + 1));
-            u8 index = (first & 0x7) | ((first & 0xC0) >> 3) | ((second & 0x7) << 5);
-            output.resize(index);
-            bits = 12;
+            prefix = 0;
         }
 
-        ReadDaveStringRaw(names, offset, bits, output);
+        for (usize i = prefix; i < name.size(); ++i)
+        {
+            u8 bits = DaveStringLookup[u8(name[i])];
+
+            IrDebugAssert(bits != 0, "Invalid Name");
+
+            switch (bit_index & 0x7)
+            {
+                case 0: // Next: 6
+                    pending = bits;
+                    break;
+
+                case 2: // Next: 0
+                    pending |= bits << 2;
+                    names.emplace_back(pending);
+                    pending = 0;
+                    break;
+
+                case 4: // Next: 2
+                    pending |= bits << 4;
+                    names.emplace_back(pending);
+                    pending = (bits >> 4) & 0x3;
+                    break;
+
+                case 6: // Next: 4
+                    pending |= bits << 6;
+                    names.emplace_back(pending);
+                    pending = (bits >> 2) & 0xF;
+                    break;
+            }
+
+            bit_index += 6;
+        }
+
+        if ((bit_index & 0x7) != 0)
+            names.emplace_back(pending);
+
+        names.emplace_back('\0');
     }
 
     DaveArchive::DaveArchive(Rc<Stream> input)
@@ -175,7 +256,7 @@ namespace Iridium::Angel
         }
     }
 
-    void DaveArchive::Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output)
+    void DaveArchive::Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names)
     {
         // 0x800 in original files, but can be a smaller amount (even 1).
         constexpr u32 data_alignment = 0x10;
@@ -183,34 +264,46 @@ namespace Iridium::Angel
         std::sort(files.begin(), files.end(),
             [&](const String& lhs, const String& rhs) { return PathCompareLess(lhs, rhs); });
 
-        Vec<DaveEntry> entries;
-        Vec<char> name_heap;
+        u32 const file_count = static_cast<u32>(files.size());
 
-        for (const auto& file : files)
-        {
-            DaveEntry entry {};
-
-            entry.NameOffset = static_cast<u32>(name_heap.size());
-
-            name_heap.insert(name_heap.end(), file.begin(), file.end());
-            name_heap.emplace_back('\0');
-
-            entries.emplace_back(entry);
-        }
+        Vec<DaveEntry> entries(file_count);
 
         DaveHeader header {};
 
-        header.Magic = 0x45564144;
-        header.FileCount = static_cast<u32>(entries.size());
+        header.Magic = packed_names ? 0x65766144 : 0x45564144;
+        header.FileCount = file_count;
 
         u32 offset = 0x800;
 
         u32 const toc_offset = offset;
-        u32 const toc_size = static_cast<u32>(entries.size() * sizeof(DaveEntry));
+        u32 const toc_size = static_cast<u32>(file_count * sizeof(DaveEntry));
 
         offset = bits::align<u32>(offset + toc_size, data_alignment);
 
         {
+            Vec<char> name_heap;
+            StringView prev_file;
+
+            for (u32 i = 0; i < file_count; ++i)
+            {
+                StringView file = files[i];
+                DaveEntry& entry = entries[i];
+
+                entry.NameOffset = static_cast<u32>(name_heap.size());
+
+                if (packed_names)
+                {
+                    WriteDaveString(name_heap, file, prev_file);
+                }
+                else
+                {
+                    name_heap.insert(name_heap.end(), file.begin(), file.end());
+                    name_heap.emplace_back('\0');
+                }
+
+                prev_file = file;
+            }
+
             u32 const names_offset = offset;
             u32 const names_size = static_cast<u32>(name_heap.size());
 
@@ -222,11 +315,12 @@ namespace Iridium::Angel
             offset = bits::align<u32>(offset + names_size, data_alignment);
         }
 
-        for (DaveEntry& entry : entries)
+        for (u32 i = 0; i < file_count; ++i)
         {
-            StringView file_name = &name_heap.at(entry.NameOffset);
+            StringView file = files[i];
+            DaveEntry& entry = entries[i];
 
-            Rc<Stream> input = device->Open(file_name, true);
+            Rc<Stream> input = device->Open(file, true);
 
             if (input == nullptr)
                 continue;
@@ -249,7 +343,7 @@ namespace Iridium::Angel
                 if (input->Seek(0, SeekWhence::Set) != 0)
                 {
                     input = nullptr;
-                    input = device->Open(file_name, true);
+                    input = device->Open(file, true);
 
                     if (input == nullptr)
                         continue;

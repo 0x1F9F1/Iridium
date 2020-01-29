@@ -115,6 +115,8 @@ namespace Iridium
         RefreshFileList();
     }
 
+    ZipArchive::~ZipArchive() = default;
+
     Rc<Stream> ZipArchive::Open(StringView path, bool read_only)
     {
         return vfs_.Open(

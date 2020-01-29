@@ -16,7 +16,7 @@ namespace Iridium
 
         Ptr<FindFileHandle> Find(StringView path) override;
 
-        // TODO: How to handle paths in Extension() calls?
+        bool Extension(StringView path, FileDeviceExtension& data) override;
 
     private:
         String prefix_;

@@ -30,6 +30,11 @@ namespace Iridium
         return device_->Find(ToAbsolute(path));
     }
 
+    bool RelativeFileDevice::Extension(StringView path, FileDeviceExtension& data)
+    {
+        return device_->Extension(ToAbsolute(path), data);
+    }
+
     String RelativeFileDevice::ToAbsolute(StringView path)
     {
         return Concat(prefix_, path);

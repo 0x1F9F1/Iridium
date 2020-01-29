@@ -10,6 +10,7 @@ namespace Iridium
     {
     public:
         ZipArchive(Rc<Stream> input);
+        ~ZipArchive() override;
 
         Rc<Stream> Open(StringView path, bool read_only) override;
         Rc<Stream> Create(StringView path, bool write_only, bool truncate) override;
