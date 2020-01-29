@@ -77,7 +77,7 @@ namespace Iridium
     DaveArchive::DaveArchive(Rc<Stream> input)
         : input_(std::move(input))
     {
-        RefreshFileList();
+        IrAssert(RefreshFileList(), "Invalid Archive");
     }
 
     Rc<Stream> DaveArchive::Open(StringView path, bool read_only)

@@ -33,4 +33,4 @@ project "IridiumExplorer"
     useIrPCH()
     includeIridium()
 
-    links { "IrCore", "IrMain", "IrAsset", "IrAngel" }
+    links { "IrCore", "IrMain", "IrAsset", "IrAngel", "IrRage" }
