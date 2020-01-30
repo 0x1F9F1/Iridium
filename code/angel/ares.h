@@ -28,6 +28,16 @@ namespace Iridium::Angel
             return dword4 & 0x7FFFFF;
         }
 
+        u32 GetEntryIndex() const
+        {
+            return dword0;
+        }
+
+        u32 GetEntryCount() const
+        {
+            return dword4 & 0x7FFFFF;
+        }
+
         bool IsDirectory() const
         {
             return (dword8 & 1) != 0;
@@ -60,6 +70,8 @@ namespace Iridium::Angel
         bool Exists(StringView path) override;
 
         Ptr<FindFileHandle> Find(StringView path) override;
+
+        static void Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output);
 
     private:
         bool RefreshFileList();
