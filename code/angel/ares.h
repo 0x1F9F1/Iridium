@@ -57,6 +57,46 @@ namespace Iridium::Angel
         {
             return (dword8 >> 1) & 0x1FFF;
         }
+
+        void SetOffset(u32 offset)
+        {
+            dword0 = offset;
+        }
+
+        void SetSize(u32 size)
+        {
+            dword4 = (dword4 & 0xFF800000) | (size);
+        }
+
+        void SetEntryIndex(u32 index)
+        {
+            dword0 = index;
+        }
+
+        void SetEntryCount(u32 size)
+        {
+            dword4 = (dword4 & 0xFF800000) | (size);
+        }
+
+        void SetIsDirectory(bool is_dir)
+        {
+            dword8 = (dword8 & 0xFFFFFFFE) | u32(is_dir);
+        }
+
+        void SetNameOffset(u32 offset)
+        {
+            dword8 = (dword8 & 0x00003FFF) | (offset << 14);
+        }
+
+        void SetExtOffset(u32 offset)
+        {
+            dword4 = (dword4 & 0x007FFFFF) | (offset << 23);
+        }
+
+        void SetNameInteger(u32 value)
+        {
+            dword8 = (dword8 & 0xFFFFC001) | (value << 1);
+        }
     };
 
     class AresArchive final : public FileDevice

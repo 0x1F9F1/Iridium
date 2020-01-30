@@ -101,13 +101,19 @@ namespace Iridium::Angel
     {
         AresHeader header;
         Vec<VirtualFileINode> nodes;
+
         Vec<char> name_heap;
+        BTreeMap<String, u32> name_lookup;
 
         Vec<String> file_names;
         Vec<Vec<VirtualFileINode>> pending;
 
+        Vec<char> ext_heap;
+        BTreeMap<String, u32> ext_lookup;
+
         void Init()
         {
+            ext_heap.emplace_back('\0');
             pending.emplace_back();
         }
 
@@ -116,14 +122,20 @@ namespace Iridium::Angel
             u32 roots = static_cast<u32>(pending.back().size());
 
             nodes.insert(nodes.begin(), pending.back().begin(), pending.back().end());
-            pending.pop_back();
+            pending.clear();
 
-            for (usize i = 0; i < nodes.size(); ++i)
+            u32 exts_size = static_cast<u32>(ext_heap.size());
+            name_heap.insert(name_heap.begin(), ext_heap.begin(), ext_heap.end());
+            ext_heap.clear();
+
+            for (VirtualFileINode& node : nodes)
             {
-                if (nodes[i].dword8 & 0x1)
+                if (node.IsDirectory())
                 {
-                    nodes[i].dword0 += roots;
+                    node.SetEntryIndex(node.GetEntryIndex() + roots);
                 }
+
+                node.SetNameOffset(node.GetNameOffset() + exts_size);
             }
 
             header.Magic = 0x53455241;
@@ -132,17 +144,106 @@ namespace Iridium::Angel
             header.NamesSize = static_cast<u32>(name_heap.size());
         }
 
-        u32 AddString(StringView name)
+        VirtualFileINode CreateNode(StringView name)
         {
-            // TODO: Handle duplicates
+            VirtualFileINode node {};
 
-            usize offset = name_heap.size();
-            IrAssert(offset < 0x3FFFF, "Too many names");
+            if (usize ext_idx = name.rfind('.'); ext_idx != StringView::npos)
+            {
+                StringView ext = name.substr(ext_idx + 1);
 
-            name_heap.insert(name_heap.end(), name.begin(), name.end());
-            name_heap.emplace_back('\0');
+                if (ext.size() > 0 && ext.size() < 24)
+                {
+                    auto find = ext_lookup.find(ext);
 
-            return static_cast<u32>(offset);
+                    if (find == ext_lookup.end())
+                    {
+                        if (ext_heap.size() < 0x1FF)
+                        {
+                            u32 ext_offset = static_cast<u32>(ext_heap.size());
+
+                            ext_heap.insert(ext_heap.end(), ext.begin(), ext.end());
+                            ext_heap.emplace_back('\0');
+
+                            find = ext_lookup.emplace(ext, ext_offset).first;
+                        }
+                    }
+
+                    if (find != ext_lookup.end())
+                    {
+                        node.SetExtOffset(find->second);
+
+                        name = name.substr(0, ext_idx);
+                    }
+                }
+            }
+
+            String modified_name;
+
+            for (usize i = 0; i < name.size(); ++i)
+            {
+                char c = name[i];
+
+                bool valid = (c >= '1') && (c <= '9');
+
+                if (!valid && (c == '0') && (i + 1 < name.size()))
+                {
+                    c = name[i + 1];
+
+                    valid = (c < '0') || (c > '9');
+                }
+
+                if (!valid)
+                    continue;
+
+                usize j = i + 1;
+
+                for (; j < name.size(); ++j)
+                {
+                    c = name[j];
+
+                    if ((c < '0') || (c > '9'))
+                        break;
+                }
+
+                u32 value = 0;
+
+                auto [_, ec] = std::from_chars(name.data() + i, name.data() + j, value);
+
+                if (ec != std::errc())
+                    continue;
+
+                if (value > 0x1FFF)
+                    continue;
+
+                node.SetNameInteger(value);
+
+                modified_name = name.substr(0, i);
+                modified_name += '\1';
+                modified_name += name.substr(j);
+
+                name = modified_name;
+
+                break;
+            }
+
+            auto find = name_lookup.find(name);
+
+            if (find == name_lookup.end())
+            {
+                IrAssert((name_heap.size() + ext_heap.size()) < 0x3FFFF, "Too Many Names");
+
+                u32 name_offset = static_cast<u32>(name_heap.size());
+
+                name_heap.insert(name_heap.end(), name.begin(), name.end());
+                name_heap.emplace_back('\0');
+
+                find = name_lookup.emplace(name, name_offset).first;
+            }
+
+            node.SetNameOffset(find->second);
+
+            return node;
         }
 
         void BeginFolder(StringView /*path*/, StringView /*name*/) override
@@ -159,20 +260,20 @@ namespace Iridium::Angel
 
             pending.pop_back();
 
-            VirtualFileINode node {};
-            node.dword0 = entry_index;
-            node.dword4 = entry_count;
-            node.dword8 = (AddString(name) << 14) | 0x1;
+            VirtualFileINode node = CreateNode(name);
+
+            node.SetIsDirectory(true);
+            node.SetEntryIndex(entry_index);
+            node.SetEntryCount(entry_count);
 
             pending.back().emplace_back(node);
         }
 
         void VisitFile(StringView path, StringView /*dir*/, StringView name) override
         {
-            VirtualFileINode node {};
-            node.dword0 = static_cast<u32>(file_names.size());
-            node.dword4 = 0;
-            node.dword8 = (AddString(name) << 14);
+            VirtualFileINode node = CreateNode(name);
+
+            node.SetOffset(static_cast<u32>(file_names.size()));
 
             file_names.emplace_back(path);
             pending.back().emplace_back(node);
@@ -230,12 +331,13 @@ namespace Iridium::Angel
 
         for (VirtualFileINode& node : nodes)
         {
-            if (node.dword8 & 0x1)
+            if (node.IsDirectory())
                 continue;
 
             StringView file_name = file_names[node.dword0];
 
-            node.dword0 = 0;
+            node.SetOffset(0);
+            node.SetSize(0);
 
             Rc<Stream> input = device->Open(file_name, true);
 
@@ -250,8 +352,8 @@ namespace Iridium::Angel
 
             IrAssert(length <= 0x7FFFFF, "File Too Large");
 
-            node.dword0 = offset;
-            node.dword4 |= length;
+            node.SetOffset(offset);
+            node.SetSize(static_cast<u32>(length));
 
             offset += static_cast<u32>(length);
         }
