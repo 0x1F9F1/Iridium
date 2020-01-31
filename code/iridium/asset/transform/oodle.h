@@ -6,8 +6,9 @@
 
 namespace Iridium
 {
-    struct OodleTransform : public BinaryTransform
+    class OodleTransform : public BinaryTransform
     {
+    public:
         OodleTransform(i64 size);
         ~OodleTransform();
 
