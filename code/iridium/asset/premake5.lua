@@ -9,5 +9,6 @@ iridium_component "IrAsset"
     filter {}
 
     includeZlib()
+    includeOodle()
 
-    links { "zlib" }
+    links { "zlib", "oodle" }

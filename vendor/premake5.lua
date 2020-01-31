@@ -7,6 +7,7 @@ SPDLOG_DIR = path.join(VENDOR_DIR, "spdlog")
 ZLIB_DIR = path.join(VENDOR_DIR, "zlib")
 HEDLEY_DIR = path.join(VENDOR_DIR, "hedley")
 WOLFSSL_DIR = path.join(VENDOR_DIR, "wolfssl")
+OODLE_DIR = path.join(VENDOR_DIR, "oodle")
 
 function includeFmt()
     includedirs { path.join(FMT_DIR, "include") }
@@ -26,6 +27,10 @@ end
 
 function includeWolfSSL()
     includedirs { WOLFSSL_DIR }
+end
+
+function includeOodle()
+    includedirs { path.join(OODLE_DIR, "include") }
 end
 
 project "*"
@@ -174,3 +179,23 @@ project "wolfssl"
 
 project "*"
     defines { "WC_NO_HARDEN", "WOLFSSL_AES_DIRECT", "HAVE_AES_ECB" }
+
+project "oodle"
+    kind "StaticLib"
+    language "C++"
+
+    files
+    {
+        path.join(OODLE_DIR, "oodle.cpp"),
+        path.join(OODLE_DIR, "include/*.h")
+    }
+
+    filter "architecture:x86"
+        links { path.join(OODLE_DIR, "lib/x86/oo2core_7_win32.lib") }
+
+    filter "architecture:x86_64"
+        links { path.join(OODLE_DIR, "lib/x64/oo2core_8_win64.lib") }
+
+    filter {}
+
+    includeOodle()
