@@ -84,6 +84,18 @@ namespace Iridium
         return FindNode(path).first != nullptr;
     }
 
+    bool VirtualFileSystemBase::Delete(StringView path)
+    {
+        auto [node, _] = FindNode(path);
+
+        if (node == nullptr || node->Type != NodeType::FileT)
+            return false;
+
+        RemoveNode(node);
+
+        return true;
+    }
+
     void VirtualFileSystemBase::Reserve(usize capacity)
     {
         capacity += (capacity >> 2);

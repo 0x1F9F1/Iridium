@@ -10,6 +10,8 @@ namespace Iridium
         StringView GetString(StringHeap::Handle handle);
 
         bool Exists(StringView path);
+        bool Delete(StringView path);
+
         void Reserve(usize capacity);
         void CompactNames();
         void Clear();
