@@ -261,8 +261,7 @@ namespace Iridium::Angel
         // 0x800 in original files, but can be a smaller amount (even 1).
         constexpr u32 data_alignment = 0x10;
 
-        std::sort(files.begin(), files.end(),
-            [&](const String& lhs, const String& rhs) { return PathCompareLess(lhs, rhs); });
+        std::sort(files.begin(), files.end(), [](StringView lhs, StringView rhs) { return PathCompareLess(lhs, rhs); });
 
         u32 const file_count = static_cast<u32>(files.size());
 

@@ -25,6 +25,11 @@ namespace Iridium
         return nullptr;
     }
 
+    bool FileDevice::Delete(StringView)
+    {
+        return false;
+    }
+
     bool FileDevice::Extension(StringView, FileDeviceExtension&)
     {
         return false;

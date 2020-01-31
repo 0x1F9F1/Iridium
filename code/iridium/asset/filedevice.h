@@ -26,7 +26,10 @@ namespace Iridium
         // Returns a handle for file enumeration, or null on error
         virtual Ptr<FindFileHandle> Find(StringView path);
 
-        // Delete
+        // Deletes a file
+        // Returns whether the file was successfully deleted
+        virtual bool Delete(StringView path);
+
         // CreateFolder
         // DeleteFolder
         // Stat

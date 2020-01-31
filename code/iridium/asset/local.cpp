@@ -26,5 +26,10 @@ namespace Iridium
         return PlatformFindFiles(path);
     }
 
+    bool LocalFileDevice::Delete(StringView path)
+    {
+        return PlatformDeleteFile(path);
+    }
+
     StaticRc<LocalFileDevice> LocalFileDevice::s_LocalFiles;
 } // namespace Iridium

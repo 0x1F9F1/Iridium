@@ -14,6 +14,8 @@ namespace Iridium
 
         Ptr<FindFileHandle> Find(StringView path) override;
 
+        bool Delete(StringView path) override;
+
         friend const Rc<LocalFileDevice>& LocalFiles();
 
     private:
