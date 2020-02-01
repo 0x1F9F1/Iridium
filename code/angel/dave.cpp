@@ -72,7 +72,7 @@ namespace Iridium::Angel
              0, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
             20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
              1, 48, 20,  2,  3, 20, 20, 20,  4,  5, 20, 20, 20,  6,  7,  8,
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 20, 20, 20,  9, 
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 20, 20, 20,  9,
             20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
             36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 20, 20, 20, 20, 20,
             20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
@@ -258,8 +258,9 @@ namespace Iridium::Angel
 
     void DaveArchive::Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names)
     {
-        // 0x800 in original files, but can be a smaller amount (even 1).
-        constexpr u32 data_alignment = 0x10;
+        // 0x800 in original archives
+        // Can be smaller for regular files, but MC2 requires 0x800 alignment when paging files
+        constexpr u32 data_alignment = 0x800;
 
         std::sort(files.begin(), files.end(), [](StringView lhs, StringView rhs) { return PathCompareLess(lhs, rhs); });
 
