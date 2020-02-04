@@ -41,6 +41,8 @@ namespace Iridium
 
         if (input.Read(&EndXor, sizeof(EndXor)) != sizeof(EndXor))
             return false;
+
+        return true;
     }
 
     void Tfit2Context::Find(BuzFinder& f, const Tfit2Buz& hashes)
@@ -102,6 +104,8 @@ namespace Iridium
 
         if (output.Write(&EndXor, sizeof(EndXor)) != sizeof(EndXor))
             return false;
+
+        return true;
     }
 
     static IR_FORCEINLINE void TFIT2_DecryptRoundA(const Tfit2Context& ctx, u8 data[16])

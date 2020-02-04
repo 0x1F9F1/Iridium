@@ -5,3 +5,5 @@ iridium_component "IrRage"
     }
 
     includeZlib()
+    includeOodle()
+    includeWolfSSL()
