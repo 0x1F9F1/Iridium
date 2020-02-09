@@ -561,9 +561,8 @@ namespace Iridium::Rage
         return None;
     }
 
-    std::unordered_map<Tuple<u32, u8>, String, HashTuple<u32, u8>> KnownFiles;
-
-    std::unordered_map<u32, String> PossibleFiles;
+    static std::unordered_map<Tuple<u32, u8>, String, HashTuple<u32, u8>> KnownFiles_RDR2;
+    static std::unordered_map<u32, String> PossibleFiles_RDR2;
 
     static Pair<StringView, StringView> SplitFileName(StringView name)
     {
@@ -612,14 +611,14 @@ namespace Iridium::Rage
     {
         auto [name, hash, ext] = NormalisePath(path);
 
-        return KnownFiles.try_emplace(Tuple<u32, u8> {hash, ext}, name).second;
+        return KnownFiles_RDR2.try_emplace(Tuple<u32, u8> {hash, ext}, name).second;
     }
 
     static bool AddPossibleFileName(String path)
     {
         auto [name, hash, ext] = NormalisePath(path);
 
-        return PossibleFiles.try_emplace(hash, name).second;
+        return PossibleFiles_RDR2.try_emplace(hash, name).second;
     }
 
     void PackFile8::LoadFileList(BufferedStream& input)
@@ -632,7 +631,7 @@ namespace Iridium::Rage
 
     void PackFile8::SaveFileList(BufferedStream& output)
     {
-        for (const auto& file : KnownFiles)
+        for (const auto& file : KnownFiles_RDR2)
         {
             auto [hash, ext_id] = file.first;
 
@@ -658,13 +657,13 @@ namespace Iridium::Rage
 
     static String GetFileName(u32 hash, u8 ext, char platform)
     {
-        auto find = KnownFiles.find(Tuple<u32, u8> {hash, ext});
+        auto find = KnownFiles_RDR2.find(Tuple<u32, u8> {hash, ext});
 
-        if (find == KnownFiles.end())
+        if (find == KnownFiles_RDR2.end())
         {
-            if (auto poss_find = PossibleFiles.find(hash); poss_find != PossibleFiles.end())
+            if (auto poss_find = PossibleFiles_RDR2.find(hash); poss_find != PossibleFiles_RDR2.end())
             {
-                KnownFiles.emplace_hint(find, Tuple<u32, u8> {hash, ext}, poss_find->second);
+                KnownFiles_RDR2.emplace_hint(find, Tuple<u32, u8> {hash, ext}, poss_find->second);
 
                 // fmt::print("Added possible name: {}", poss_find->second);
             }
