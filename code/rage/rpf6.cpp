@@ -126,6 +126,8 @@ namespace Iridium::Rage
 
         String path;
         AddFile(entries_, 0, path);
+
+        return true;
     }
 
     void PackFile6::AddFile(const Vec<fiPackEntry6>& entries, u32 index, String& path)
