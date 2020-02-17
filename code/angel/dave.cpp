@@ -190,7 +190,7 @@ namespace Iridium::Angel
             return false;
 
         if (header.Magic != 0x45564144 && header.Magic != 0x65766144)
-            return false;
+            return false; // TODO: Handle "locked" .ar (zip) files
 
         bool packed_names = header.Magic == 0x65766144;
 

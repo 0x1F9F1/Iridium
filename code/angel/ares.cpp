@@ -182,25 +182,25 @@ namespace Iridium::Angel
 
             for (usize i = 0; i < name.size(); ++i)
             {
-                char c = name[i];
-
-                bool valid = (c >= '1') && (c <= '9');
-
-                if (!valid && (c == '0') && (i + 1 < name.size()))
+                if (char c = name[i]; c < '1' || c > '9')
                 {
-                    c = name[i + 1];
+                    if (c != '0')
+                        continue;
 
-                    valid = (c < '0') || (c > '9');
+                    if ((i + 1) < name.size())
+                    {
+                        c = name[i + 1];
+
+                        if ((c >= '0') && (c <= '9'))
+                            continue;
+                    }
                 }
-
-                if (!valid)
-                    continue;
 
                 usize j = i + 1;
 
                 for (; j < name.size(); ++j)
                 {
-                    c = name[j];
+                    char c = name[j];
 
                     if ((c < '0') || (c > '9'))
                         break;

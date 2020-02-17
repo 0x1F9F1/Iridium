@@ -5,33 +5,33 @@ namespace Iridium
     class BuzHash
     {
     public:
-        BuzHash(usize len) noexcept
+        inline BuzHash(usize len) noexcept
             : shift_(len & 0x1F)
         {}
 
-        u32 get() const noexcept
+        inline u32 get() const noexcept
         {
             return hash_;
         }
 
-        void reset() noexcept
+        inline void reset() noexcept
         {
             hash_ = 0;
         }
 
-        void eat(u8 input) noexcept
+        inline void eat(u8 input) noexcept
         {
             hash_ = (hash_ << 1 | hash_ >> 31) ^ lookup_[input];
         }
 
-        void update(u8 input, u8 old) noexcept
+        inline void update(u8 input, u8 old) noexcept
         {
             u32 const new_value = lookup_[input];
             u32 const old_value = lookup_[old];
             hash_ = (hash_ << 1 | hash_ >> 31) ^ new_value ^ (old_value << shift_ | old_value >> (32 - shift_));
         }
 
-        static u32 Hash(const void* input, usize len) noexcept
+        static inline u32 Hash(const void* input, usize len) noexcept
         {
             BuzHash hasher(len);
 
