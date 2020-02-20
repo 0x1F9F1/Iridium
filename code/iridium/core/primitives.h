@@ -30,4 +30,31 @@ namespace Iridium
 
     using usize = std::size_t;
     using isize = std::ptrdiff_t;
+
+    inline namespace Literals
+    {
+#define _IR_LITERAL(NAME, IN_TYPE, OUT_TYPE)                              \
+    IR_FORCEINLINE constexpr OUT_TYPE operator"" NAME(IN_TYPE n) noexcept \
+    {                                                                     \
+        return static_cast<OUT_TYPE>(n);                                  \
+    }
+
+        _IR_LITERAL(_i8, unsigned long long int, i8);
+        _IR_LITERAL(_i16, unsigned long long int, i16);
+        _IR_LITERAL(_i32, unsigned long long int, i32);
+        _IR_LITERAL(_i64, unsigned long long int, i64);
+
+        _IR_LITERAL(_u8, unsigned long long int, u8);
+        _IR_LITERAL(_u16, unsigned long long int, u16);
+        _IR_LITERAL(_u32, unsigned long long int, u32);
+        _IR_LITERAL(_u64, unsigned long long int, u64);
+
+        _IR_LITERAL(_f32, long double, f32);
+        _IR_LITERAL(_f64, long double, f64);
+
+        _IR_LITERAL(_isize, unsigned long long int, isize);
+        _IR_LITERAL(_usize, unsigned long long int, usize);
+
+#undef _IR_LITERAL
+    } // namespace Literals
 } // namespace Iridium
