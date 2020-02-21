@@ -64,6 +64,15 @@ namespace Iridium
         WIN32_FIND_DATAW data_ {};
     };
 
+    class Win32FindVolumeHandle final : public FindFileHandle
+    {
+    public:
+        bool Next(FolderEntry& entry) override;
+
+    private:
+        char index_ {'A'};
+    };
+
     class Win32TempFileCache
     {
     public:
@@ -325,6 +334,26 @@ namespace Iridium
         return true;
     }
 
+    bool Win32FindVolumeHandle::Next(FolderEntry& entry)
+    {
+        entry.Reset();
+
+        while (index_ <= 'Z')
+        {
+            char path[4] {index_++, ':', '\\', '\0'};
+
+            if (GetVolumeInformationA(path, nullptr, 0, nullptr, nullptr, nullptr, nullptr, 0))
+            {
+                entry.Name = StringView(path, 2);
+                entry.IsFolder = true;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     Win32TempFileCache::Win32TempFileCache()
     {
         InitializeCriticalSection(&lock_);
@@ -480,6 +509,9 @@ namespace Iridium
 
     Ptr<FindFileHandle> PlatformFindFiles(StringView path)
     {
+        if (path.empty())
+            return MakeUnique<Win32FindVolumeHandle>();
+
         wchar_t wpath[MAX_PATH + 2];
 
         usize converted = Win32ToNativePath(path, wpath, std::size(wpath) - 2);
