@@ -178,9 +178,10 @@ namespace Iridium::Rage
 
     bool PackFile7::RefreshFileList()
     {
-        input_->Seek(0, SeekWhence::Set);
+        if (!input_->TrySeek(0))
+            return false;
 
-        if (input_->Read(&header_, sizeof(header_)) != sizeof(header_))
+        if (!input_->TryRead(&header_, sizeof(header_)))
             return false;
 
         bool swap_endian = false;
@@ -207,13 +208,12 @@ namespace Iridium::Rage
 
         Vec<fiPackEntry7> entries(header_.EntryCount);
 
-        if (input_->Read(entries.data(), entries.size() * sizeof(fiPackEntry7)) !=
-            entries.size() * sizeof(fiPackEntry7))
+        if (!input_->TryRead(entries.data(), entries.size() * sizeof(fiPackEntry7)))
             return false;
 
         Vec<char> names(header_.GetNamesLength());
 
-        if (input_->Read(names.data(), names.size()) != names.size())
+        if (!input_->TryRead(names.data(), names.size()))
             return false;
 
         if (Ptr<Cipher> cipher = MakeCipher(key_index_))
@@ -316,7 +316,7 @@ namespace Iridium::Rage
             {
                 u8 rsc_header[0x10];
 
-                if (input_->ReadBulk(rsc_header, sizeof(rsc_header), offset) != sizeof(rsc_header))
+                if (!input_->TryReadBulk(rsc_header, sizeof(rsc_header), offset))
                     return nullptr;
 
                 raw_size = GetLargeResourceSize(rsc_header);

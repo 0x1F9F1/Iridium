@@ -291,17 +291,17 @@ namespace Iridium::Rage
         return (cipher_->Cipher::Update)(ptr, input_->Read(ptr, len));
     }
 
-    Tfit2Context RDR2_PC_CONTEXT;
-    u64 RDR2_PC_KEYS[164][18][2];
-    u8 RDR2_PC_IV[16];
+    static Tfit2Context RDR2_PC_CONTEXT;
+    static u64 RDR2_PC_KEYS[164][18][2];
+    static u8 RDR2_PC_IV[16];
 
-    u32 RDR2_ANDROID_KEYS[164][20][4];
-    u32 RDR2_ANDROID_TABLES[17][16][256];
-    u8 RDR2_ANDROID_IV[16];
+    static u32 RDR2_ANDROID_KEYS[164][20][4];
+    static u32 RDR2_ANDROID_TABLES[17][16][256];
+    static u8 RDR2_ANDROID_IV[16];
 
-    u32 RDR2_PS4_KEYS[164][20][4];
-    u32 RDR2_PS4_TABLES[17][16][256];
-    u8 RDR2_PS4_IV[16];
+    static u32 RDR2_PS4_KEYS[164][20][4];
+    static u32 RDR2_PS4_TABLES[17][16][256];
+    static u8 RDR2_PS4_IV[16];
 
     bool PackFile8::LoadDecryptionKeysPC(BufferedStream& input)
     {
@@ -309,11 +309,11 @@ namespace Iridium::Rage
 
         for (usize i = 0; i < 164; ++i)
         {
-            if (input.Read(&RDR2_PC_KEYS[i], sizeof(RDR2_PC_KEYS[i])) != sizeof(RDR2_PC_KEYS[i]))
+            if (!input.TryRead(&RDR2_PC_KEYS[i], sizeof(RDR2_PC_KEYS[i])))
                 return false;
         }
 
-        if (input.Read(&RDR2_PC_IV, sizeof(RDR2_PC_IV)) != sizeof(RDR2_PC_IV))
+        if (!input.TryRead(&RDR2_PC_IV, sizeof(RDR2_PC_IV)))
             return false;
 
         RDR2_PC_CONTEXT.Load(input);
@@ -341,11 +341,11 @@ namespace Iridium::Rage
     {
         for (usize i = 0; i < 164; ++i)
         {
-            if (output.Write(&RDR2_PC_KEYS[i], sizeof(RDR2_PC_KEYS[i])) != sizeof(RDR2_PC_KEYS[i]))
+            if (!output.TryWrite(&RDR2_PC_KEYS[i], sizeof(RDR2_PC_KEYS[i])))
                 return false;
         }
 
-        if (output.Write(&RDR2_PC_IV, sizeof(RDR2_PC_IV)) != sizeof(RDR2_PC_IV))
+        if (!output.TryWrite(&RDR2_PC_IV, sizeof(RDR2_PC_IV)))
             return false;
 
         return RDR2_PC_CONTEXT.Save(output);
@@ -357,7 +357,7 @@ namespace Iridium::Rage
 
         for (usize i = 0; i < 164; ++i)
         {
-            if (input.Read(&RDR2_ANDROID_KEYS[i], sizeof(RDR2_ANDROID_KEYS[i])) != sizeof(RDR2_ANDROID_KEYS[i]))
+            if (!input.TryRead(&RDR2_ANDROID_KEYS[i], sizeof(RDR2_ANDROID_KEYS[i])))
                 return false;
         }
 
@@ -366,7 +366,7 @@ namespace Iridium::Rage
 
         for (usize i = 0; i < 84; ++i)
         {
-            if (input.Read(&partial_tables[i], sizeof(partial_tables[i])) != sizeof(partial_tables[i]))
+            if (!input.TryRead(&partial_tables[i], sizeof(partial_tables[i])))
                 return false;
 
             u32 hash = joaat(&partial_tables[i], sizeof(partial_tables[i]));
@@ -382,7 +382,7 @@ namespace Iridium::Rage
             }
         }
 
-        if (input.Read(&RDR2_ANDROID_IV, sizeof(RDR2_ANDROID_IV)) != sizeof(RDR2_ANDROID_IV))
+        if (!input.TryRead(&RDR2_ANDROID_IV, sizeof(RDR2_ANDROID_IV)))
             return false;
 
         return true;
@@ -394,7 +394,7 @@ namespace Iridium::Rage
 
         for (usize i = 0; i < 164; ++i)
         {
-            if (input.Read(&RDR2_PS4_KEYS[i], sizeof(RDR2_PS4_KEYS[i])) != sizeof(RDR2_PS4_KEYS[i]))
+            if (!input.TryRead(&RDR2_PS4_KEYS[i], sizeof(RDR2_PS4_KEYS[i])))
                 return false;
         }
 
@@ -403,7 +403,7 @@ namespace Iridium::Rage
 
         for (usize i = 0; i < 84; ++i)
         {
-            if (input.Read(&partial_tables[i], sizeof(partial_tables[i])) != sizeof(partial_tables[i]))
+            if (!input.TryRead(&partial_tables[i], sizeof(partial_tables[i])))
                 return false;
 
             u32 hash = joaat(&partial_tables[i], sizeof(partial_tables[i]));
@@ -419,7 +419,7 @@ namespace Iridium::Rage
             }
         }
 
-        if (input.Read(&RDR2_PS4_IV, sizeof(RDR2_PS4_IV)) != sizeof(RDR2_PS4_IV))
+        if (!input.TryRead(&RDR2_PS4_IV, sizeof(RDR2_PS4_IV)))
             return false;
 
         return true;
@@ -451,7 +451,7 @@ namespace Iridium::Rage
     {
         for (usize i = 0; i < 164; ++i)
         {
-            if (output.Write(&RDR2_PS4_KEYS[i], sizeof(RDR2_PS4_KEYS[i])) != sizeof(RDR2_PS4_KEYS[i]))
+            if (!output.TryWrite(&RDR2_PS4_KEYS[i], sizeof(RDR2_PS4_KEYS[i])))
                 return false;
         }
 
@@ -463,14 +463,13 @@ namespace Iridium::Rage
             {
                 if (seen.emplace(RDR2_TFIT_TABLE_HASHES[i][j].JHash).second)
                 {
-                    if (output.Write(&RDR2_PS4_TABLES[i][j], sizeof(RDR2_PS4_TABLES[i][j])) !=
-                        sizeof(RDR2_PS4_TABLES[i][j]))
+                    if (!output.TryWrite(&RDR2_PS4_TABLES[i][j], sizeof(RDR2_PS4_TABLES[i][j])))
                         return false;
                 }
             }
         }
 
-        if (output.Write(&RDR2_PS4_IV, sizeof(RDR2_PS4_IV)) != sizeof(RDR2_PS4_IV))
+        if (!output.TryWrite(&RDR2_PS4_IV, sizeof(RDR2_PS4_IV)))
             return false;
 
         return true;
@@ -528,7 +527,7 @@ namespace Iridium::Rage
         return 0xFF;
     }
 
-    Option<Ptr<Cipher>> GetRPF8Cipher(u16 platform, u16 tag)
+    static Option<Ptr<Cipher>> GetRPF8Cipher(u16 platform, u16 tag)
     {
         if (tag == 0xFF)
             return nullptr;
@@ -701,10 +700,10 @@ namespace Iridium::Rage
 
     bool PackFile8::RefreshFileList()
     {
-        if (input_->Seek(0, SeekWhence::Set) != 0)
+        if (!input_->TrySeek(0))
             return false;
 
-        if (input_->Read(&header_, sizeof(header_)) != sizeof(header_))
+        if (!input_->TryRead(&header_, sizeof(header_)))
             return false;
 
         if (header_.Magic != 0x52504638)
@@ -712,8 +711,7 @@ namespace Iridium::Rage
 
         entries_.resize(header_.EntryCount);
 
-        if (input_->Read(entries_.data(), entries_.size() * sizeof(fiPackEntry8)) !=
-            entries_.size() * sizeof(fiPackEntry8))
+        if (!input_->TryRead(entries_.data(), entries_.size() * sizeof(fiPackEntry8)))
             return false;
 
         if (Option<Ptr<Cipher>> cipher = GetRPF8Cipher(header_.PlatformId, header_.DecryptionTag))
@@ -736,8 +734,7 @@ namespace Iridium::Rage
 
             Vec<char> names(header_.NamesLength);
 
-            if (input_->ReadBulk(names.data(), names.size(), input_->Size().get() - header_.NamesLength) !=
-                names.size())
+            if (!input_->TryReadBulk(names.data(), names.size(), input_->Size().get() - header_.NamesLength))
                 return false;
 
             StringView names_view(names.data(), names.size());
@@ -766,18 +763,6 @@ namespace Iridium::Rage
         }
 
         return true;
-    }
-
-    void ParsePacklist(BufferedStream& input)
-    {
-        String line;
-
-        while (input.GetLine(line))
-        {
-            AddPossibleFileName(line);
-
-            line.clear();
-        }
     }
 
     void PackFile8::AddFile(const fiPackEntry8& entry)
@@ -824,8 +809,8 @@ namespace Iridium::Rage
             if (Option<Ptr<Cipher>> cipher = GetRPF8Cipher(header_.PlatformId, key))
             {
                 if (*cipher)
-                    result = MakeRc<Rage::RageStridedStream>(std::move(result),
-                        MakeUnique<Rage::RageStridedCipher>(entry.GetEncryptionConfig(), raw_size, std::move(*cipher)));
+                    result = MakeRc<RageStridedStream>(std::move(result),
+                        MakeUnique<RageStridedCipher>(entry.GetEncryptionConfig(), raw_size, std::move(*cipher)));
             }
             else
             {

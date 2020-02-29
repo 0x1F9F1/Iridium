@@ -82,10 +82,10 @@ namespace Iridium::Rage
 
     bool PackFile6::RefreshFileList()
     {
-        if (input_->Seek(0, SeekWhence::Set) != 0)
+        if (!input_->TrySeek(0))
             return false;
 
-        if (input_->Read(&header_, sizeof(header_)) != sizeof(header_))
+        if (!input_->TryRead(&header_, sizeof(header_)))
             return false;
 
         bool swap_endian = false;
@@ -102,8 +102,7 @@ namespace Iridium::Rage
 
         entries_.resize(header_.EntryCount);
 
-        if (input_->Read(entries_.data(), entries_.size() * sizeof(fiPackEntry6)) !=
-            entries_.size() * sizeof(fiPackEntry6))
+        if (!input_->TryRead(entries_.data(), entries_.size() * sizeof(fiPackEntry6)))
             return false;
 
         if (Option<Ptr<Cipher>> cipher = MakeCipher())

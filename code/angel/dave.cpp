@@ -186,7 +186,7 @@ namespace Iridium::Angel
     {
         DaveHeader header {};
 
-        if (input_->ReadBulk(&header, sizeof(header), 0) != sizeof(header))
+        if (!input_->TryReadBulk(&header, sizeof(header), 0))
             return false;
 
         if (header.Magic != 0x45564144 && header.Magic != 0x65766144)
@@ -196,21 +196,13 @@ namespace Iridium::Angel
 
         Vec<DaveEntry> entries(header.FileCount);
 
-        {
-            usize const entries_size = entries.size() * sizeof(DaveEntry);
-
-            if (input_->ReadBulk(entries.data(), entries_size, 2048) != entries_size)
-                return false;
-        }
+        if (!input_->TryReadBulk(entries.data(), entries.size() * sizeof(DaveEntry), 2048))
+            return false;
 
         Vec<char> names(header.NamesSize);
 
-        {
-            usize const names_size = names.size();
-
-            if (input_->ReadBulk(names.data(), names_size, 2048 + header.NamesOffset) != names_size)
-                return false;
-        }
+        if (!input_->TryReadBulk(names.data(), names.size(), 2048 + header.NamesOffset))
+            return false;
 
         if (names.back() != '\0')
             names.emplace_back('\0');

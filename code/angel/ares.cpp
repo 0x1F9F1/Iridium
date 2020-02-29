@@ -320,10 +320,10 @@ namespace Iridium::Angel
         visitor.Visit(files);
         visitor.Finalize();
 
-        AresHeader& header = visitor.header;
-        Vec<VirtualFileINode>& nodes = visitor.nodes;
-        Vec<char>& name_heap = visitor.name_heap;
-        Vec<String> file_names = visitor.file_names;
+        AresHeader header = std::move(visitor.header);
+        Vec<VirtualFileINode> nodes = std::move(visitor.nodes);
+        Vec<char> name_heap = std::move(visitor.name_heap);
+        Vec<String> file_names = std::move(visitor.file_names);
 
         constexpr u32 data_alignment = 0x10;
 
@@ -367,11 +367,12 @@ namespace Iridium::Angel
 
     bool AresArchive::RefreshFileList()
     {
-        input_->Seek(0, SeekWhence::Set);
+        if (!input_->TrySeek(0))
+            return false;
 
         AresHeader header {};
 
-        if (input_->Read(&header, sizeof(header)) != sizeof(header))
+        if (!input_->TryRead(&header, sizeof(header)))
             return false;
 
         if (header.Magic != 0x53455241)
@@ -379,13 +380,12 @@ namespace Iridium::Angel
 
         Vec<VirtualFileINode> nodes(header.FileCount);
 
-        if (input_->Read(nodes.data(), nodes.size() * sizeof(VirtualFileINode)) !=
-            nodes.size() * sizeof(VirtualFileINode))
+        if (!input_->TryRead(nodes.data(), nodes.size() * sizeof(VirtualFileINode)))
             return false;
 
         Vec<char> names(header.NamesSize);
 
-        if (input_->Read(names.data(), names.size()) != names.size())
+        if (!input_->TryRead(names.data(), names.size()))
             return false;
 
         if (names.back() != '\0')

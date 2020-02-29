@@ -89,5 +89,36 @@ namespace Iridium
 
         String ReadText();
         Vec<u8> ReadBytes();
+
+        bool TrySeek(u64 position);
+        bool TryRead(void* ptr, usize len);
+        bool TryWrite(const void* ptr, usize len);
+        bool TryReadBulk(void* ptr, usize len, u64 offset);
+        bool TryWriteBulk(const void* ptr, usize len, u64 offset);
     };
+
+    inline bool Stream::TrySeek(u64 position)
+    {
+        return Seek(position, SeekWhence::Set) == position;
+    }
+
+    inline bool Stream::TryRead(void* ptr, usize len)
+    {
+        return Read(ptr, len) == len;
+    }
+
+    inline bool Stream::TryWrite(const void* ptr, usize len)
+    {
+        return Write(ptr, len) == len;
+    }
+
+    inline bool Stream::TryReadBulk(void* ptr, usize len, u64 offset)
+    {
+        return ReadBulk(ptr, len, offset) == offset;
+    }
+
+    inline bool Stream::TryWriteBulk(const void* ptr, usize len, u64 offset)
+    {
+        return WriteBulk(ptr, len, offset) == offset;
+    }
 } // namespace Iridium
