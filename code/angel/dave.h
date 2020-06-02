@@ -53,7 +53,8 @@ namespace Iridium::Angel
 
         Ptr<FindFileHandle> Find(StringView path) override;
 
-        static void Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names);
+        static void Save(
+            Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names, u32 data_alignment = 0x800);
 
     private:
         bool RefreshFileList();

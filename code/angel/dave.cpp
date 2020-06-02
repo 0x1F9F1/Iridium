@@ -248,11 +248,11 @@ namespace Iridium::Angel
         }
     }
 
-    void DaveArchive::Save(Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names)
+    void DaveArchive::Save(
+        Rc<FileDevice> device, Vec<String> files, Rc<Stream> output, bool packed_names, u32 data_alignment)
     {
-        // 0x800 in original archives
-        // Can be smaller for regular files, but MC2 requires 0x800 alignment when paging files
-        constexpr u32 data_alignment = 0x800;
+        // Data alignment is 0x800 (CD sector size) in original archives
+        // Can be smaller for most archives, but MC2 (and maybe others) requires 0x800 alignment when paging files
 
         std::sort(files.begin(), files.end(), [](StringView lhs, StringView rhs) { return PathCompareLess(lhs, rhs); });
 
