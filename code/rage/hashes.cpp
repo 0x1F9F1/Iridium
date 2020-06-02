@@ -1,6 +1,6 @@
 #include "hashes.h"
 
-#include "crypto/tfit2.h"
+#include "tfit2.h"
 
 namespace Iridium::Rage
 {

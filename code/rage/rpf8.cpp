@@ -10,8 +10,8 @@
 
 #include "asset/glob.h"
 
-#include "crypto/tfit.h"
-#include "crypto/tfit2.h"
+#include "tfit.h"
+#include "tfit2.h"
 
 #include "core/bits.h"
 #include "core/joaat.h"
@@ -261,7 +261,7 @@ namespace Iridium::Rage
         RageStridedStream(Rc<Stream> input, Ptr<RageStridedCipher> cipher)
             : input_(std::move(input))
             , cipher_(std::move(cipher))
-        {}
+        { }
 
         StreamPosition Tell() override;
         StreamPosition Size() override;

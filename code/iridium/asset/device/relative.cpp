@@ -8,7 +8,7 @@ namespace Iridium
     RelativeFileDevice::RelativeFileDevice(String prefix, Rc<FileDevice> device)
         : prefix_(std::move(prefix))
         , device_(std::move(device))
-    {}
+    { }
 
     Rc<Stream> RelativeFileDevice::Open(StringView path, bool read_only)
     {

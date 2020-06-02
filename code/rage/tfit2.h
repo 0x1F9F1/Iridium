@@ -1,7 +1,7 @@
 #pragma once
 
-#include "buzhash.h"
-#include "cipher.h"
+#include "crypto/buzhash.h"
+#include "crypto/cipher.h"
 
 namespace Iridium
 {

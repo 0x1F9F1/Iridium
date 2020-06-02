@@ -8,6 +8,8 @@
 
 #include "core/assert.h"
 
+#include "core/base.h"
+
 #include "core/pointer.h"
 #include "core/refcount.h"
 

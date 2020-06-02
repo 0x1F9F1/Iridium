@@ -60,8 +60,7 @@ namespace Iridium
                         i++;
                         j++;
                         continue;
-                    case '[':
-                    {
+                    case '[': {
                         // match any character in [...] except /
                         if (text[i] == '/')
                             break;

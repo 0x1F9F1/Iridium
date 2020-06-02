@@ -56,7 +56,7 @@ namespace Iridium
                 : Hash(hash)
                 , Type(type)
                 , Name(name)
-            {}
+            { }
         };
 
         struct FileNode : Node
@@ -79,7 +79,7 @@ namespace Iridium
 
             inline FolderNode(StringHash hash, StringHeap::Handle name)
                 : Node(hash, name, NodeType::Folder)
-            {}
+            { }
 
             void AddFile(FileNode* node);
             void AddFolder(FolderNode* node);

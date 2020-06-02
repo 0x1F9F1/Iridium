@@ -2,10 +2,9 @@
 
 #include "asset/stream/buffered.h"
 #include "asset/stream/decode.h"
-#include "asset/stream/ecb.h"
 #include "asset/stream/partial.h"
-
 #include "asset/transform/deflate.h"
+#include "crypto/stream/ecb.h"
 // #include "asset/transform/lzxd.h"
 
 #include "core/bits.h"
@@ -380,15 +379,13 @@ namespace Iridium::Rage
 
         switch (id)
         {
-            case 0xFEFFFFF:
-            {
+            case 0xFEFFFFF: {
                 IrAssert(index < 101, "Invalid Key Index");
 
                 return MakeUnique<TfitEcbCipher>(GTA5_PC_TFIT_KEYS[index] + 1, GTA5_PC_TFIT_TABLES);
             }
 
-            case 0xFFEFFFF:
-            {
+            case 0xFFEFFFF: {
                 IrAssert(index < 101, "Invalid Key Index");
 
                 return MakeUnique<AesEcbCipher>(GTA5_PS4_AES_KEYS[index], 32, true);
@@ -396,8 +393,7 @@ namespace Iridium::Rage
 
             case 0xFFFFFF8: return MakeUnique<AesEcbCipher>(GTA5_PS3_AES_KEY, 32, true);
 
-            case 0xFFFFFF7:
-            {
+            case 0xFFFFFF7: {
                 if (header_.GetPlatformBit())
                     return MakeUnique<AesEcbCipher>(GTA5_360_AES_KEY, 32, true);
                 else

@@ -15,7 +15,7 @@ namespace Iridium::Rage
     public:
         RageCipher16(Ptr<Cipher> cipher)
             : cipher_(std::move(cipher))
-        {}
+        { }
 
         virtual usize Update(const u8* input, u8* output, usize length) override
         {

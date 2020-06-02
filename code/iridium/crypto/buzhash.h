@@ -7,7 +7,7 @@ namespace Iridium
     public:
         inline BuzHash(usize len) noexcept
             : shift_(len & 0x1F)
-        {}
+        { }
 
         inline u32 get() const noexcept
         {

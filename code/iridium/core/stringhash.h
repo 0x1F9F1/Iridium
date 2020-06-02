@@ -40,7 +40,7 @@ namespace Iridium
 
     inline constexpr StringHash::StringHash(u32 value)
         : Value(value)
-    {}
+    { }
 
     inline constexpr bool StringHash::operator==(const StringHash& other) const
     {
@@ -71,7 +71,7 @@ namespace Iridium
 
     inline constexpr StringHasher::StringHasher(u32 seed)
         : value_(seed)
-    {}
+    { }
 
     inline StringHash StringHasher::Finalize() const
     {

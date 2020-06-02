@@ -2,7 +2,7 @@
 
 #include "asset/stream/buffered.h"
 
-#include "buzhash.h"
+#include "crypto/buzhash.h"
 
 namespace Iridium
 {

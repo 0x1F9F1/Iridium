@@ -72,26 +72,26 @@ namespace Iridium
 
         IR_FORCEINLINE constexpr Rc(std::nullptr_t) noexcept
             : ptr_(nullptr)
-        {}
+        { }
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE explicit Rc(U* ptr) noexcept
             : ptr_(ptr)
-        {}
+        { }
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc(Ptr<U> ptr) noexcept
             : ptr_(ptr.release())
-        {}
+        { }
 
         IR_FORCEINLINE Rc(Rc&& other) noexcept
             : ptr_(other.release())
-        {}
+        { }
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc(Rc<U>&& other) noexcept
             : ptr_(other.release())
-        {}
+        { }
 
         IR_FORCEINLINE Rc(const Rc& other) noexcept
             : ptr_(other.get())
@@ -219,9 +219,9 @@ namespace Iridium
         inline StaticRc(Args&&... args)
             : value_(std::forward<Args>(args)...)
             , ref_(AddRc(&value_))
-        {}
+        { }
 
-        IR_FORCEINLINE operator const Rc<T>&() noexcept
+        IR_FORCEINLINE operator const Rc<T> &() noexcept
         {
             return ref_;
         }

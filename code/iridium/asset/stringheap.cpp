@@ -5,7 +5,7 @@ namespace Iridium
     StringHeap::Handle::Handle(usize offset, usize size) noexcept
         : Offset(static_cast<u32>(offset))
         , Size(static_cast<u32>(size))
-    {}
+    { }
 
     // TODO: Normalize slashes (\ -> /)
 

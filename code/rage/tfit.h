@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cipher.h"
+#include "crypto/cipher.h"
 
 namespace Iridium
 {

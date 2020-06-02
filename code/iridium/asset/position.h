@@ -9,7 +9,7 @@ namespace Iridium
 
         IR_FORCEINLINE constexpr StreamPosition(u64 value)
             : value_(value)
-        {}
+        { }
 
         IR_FORCEINLINE constexpr i64 get() const
         {

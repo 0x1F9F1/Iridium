@@ -1,5 +1,3 @@
-require "qt"
-
 VENDOR_DIR = os.getcwd()
 
 FMT_DIR = path.join(VENDOR_DIR, "fmt")
@@ -32,20 +30,6 @@ end
 function includeOodle()
     includedirs { path.join(OODLE_DIR, "include") }
 end
-
-project "*"
-    qtprefix "Qt5"
-
-    filter "architecture:x86"
-        qtpath "C:/Qt/5.12.6/msvc2017"
-
-    filter "architecture:x86_64"
-        qtpath "C:/Qt/5.12.6/msvc2017_64"
-
-    filter "configurations:Debug"
-        qtsuffix "d"
-
-    filter {}
 
 project "fmt"
     kind "StaticLib"
