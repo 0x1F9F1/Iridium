@@ -31,7 +31,7 @@ namespace Iridium
         bool IsFullSync() override;
 
     protected:
-        HANDLE handle_ {nullptr};
+        HANDLE handle_ {INVALID_HANDLE_VALUE};
     };
 
     class Win32FileStream final : public Win32FileStreamBase
@@ -59,7 +59,7 @@ namespace Iridium
         bool Next(FolderEntry& entry) override;
 
     private:
-        HANDLE handle_ {};
+        HANDLE handle_ {INVALID_HANDLE_VALUE};
         bool valid_ {false};
         WIN32_FIND_DATAW data_ {};
     };
@@ -88,9 +88,9 @@ namespace Iridium
 
     private:
         CRITICAL_SECTION lock_;
-        wchar_t temp_path_[MAX_PATH];
+        wchar_t temp_path_[MAX_PATH + 1];
         usize handle_count_ {0};
-        HANDLE handles_[16];
+        HANDLE handles_[16] {};
     };
 
     Win32TempFileCache Win32TempFileCache::Instance;
@@ -151,7 +151,7 @@ namespace Iridium
 
     Win32FileStreamBase::Win32FileStreamBase(HANDLE handle)
         : handle_(handle)
-    {}
+    { }
 
     Win32FileStreamBase::~Win32FileStreamBase() = default;
 
@@ -163,7 +163,7 @@ namespace Iridium
         LARGE_INTEGER result;
         result.QuadPart = 0;
 
-        DWORD method = 0;
+        DWORD method = FILE_BEGIN;
 
         switch (whence)
         {
@@ -358,8 +358,26 @@ namespace Iridium
     {
         InitializeCriticalSection(&lock_);
 
-        IrAssert(
-            GetTempPathW(static_cast<DWORD>(std::size(temp_path_)), temp_path_) != 0, "Could not get temp file path");
+        usize written = GetTempPathW(static_cast<DWORD>(std::size(temp_path_)), temp_path_);
+
+        IrAssert(written != 0, "Could not get temp file path");
+        IrAssert(written + 11 < std::size(temp_path_), "Temp file path too long");
+
+        temp_path_[written++] = L'I';
+        temp_path_[written++] = L'r';
+
+        DWORD pid = GetCurrentProcessId();
+
+        for (usize i = 8; i--; pid >>= 4)
+            temp_path_[written + i] = L"0123456789ABCDEF"[pid & 0xF];
+
+        written += 8;
+
+        temp_path_[written++] = L'\\';
+        temp_path_[written] = L'\0';
+
+        IrAssert(CreateDirectoryW(temp_path_, NULL) || (GetLastError() == ERROR_ALREADY_EXISTS),
+            "Failed to create temp directory");
     }
 
     Win32TempFileCache::~Win32TempFileCache()
@@ -367,6 +385,8 @@ namespace Iridium
         CloseAll();
 
         DeleteCriticalSection(&lock_);
+
+        RemoveDirectoryW(temp_path_);
     }
 
     HANDLE Win32TempFileCache::Open()
@@ -404,19 +424,22 @@ namespace Iridium
 
     void Win32TempFileCache::Close(HANDLE handle)
     {
+        if (handle == INVALID_HANDLE_VALUE)
+            return;
+
         EnterCriticalSection(&lock_);
 
-        if (handle_count_ < std::size(handles_) && (SetFilePointer(handle, 0, NULL, FILE_BEGIN) == 0) &&
+        if ((handle_count_ < std::size(handles_)) && (SetFilePointer(handle, 0, NULL, FILE_BEGIN) == 0) &&
             SetEndOfFile(handle))
         {
             handles_[handle_count_++] = handle;
-        }
-        else
-        {
-            CloseHandle(handle);
+            handle = INVALID_HANDLE_VALUE;
         }
 
         LeaveCriticalSection(&lock_);
+
+        if (handle != INVALID_HANDLE_VALUE)
+            CloseHandle(handle);
     }
 
     void Win32TempFileCache::CloseAll()
