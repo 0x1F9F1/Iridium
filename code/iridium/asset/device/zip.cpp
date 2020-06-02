@@ -177,7 +177,7 @@ namespace Iridium
         { // Fast path for files with no comment
             ZIPENDLOCATOR eocd;
 
-            if (input_->ReadBulk(&eocd, sizeof(ZIPENDLOCATOR), here) != sizeof(ZIPENDLOCATOR))
+            if (!input_->TryReadBulk(&eocd, sizeof(ZIPENDLOCATOR), here))
                 return false;
 
             if (eocd.Signature == 0x06054B50)
@@ -196,7 +196,7 @@ namespace Iridium
 
             here -= len;
 
-            if (input_->ReadBulk(buffer, len + 3, here) != len + 3)
+            if (!input_->TryReadBulk(buffer, len + 3, here))
                 break;
 
             for (usize j = len; j--;)
@@ -221,7 +221,7 @@ namespace Iridium
 
         ZIP64ENDLOCATOR eocd64;
 
-        if (input_->ReadBulk(&eocd64, sizeof(eocd64), eocd_offset_ - sizeof(eocd64)) != sizeof(eocd64))
+        if (!input_->TryReadBulk(&eocd64, sizeof(eocd64), eocd_offset_ - sizeof(eocd64)))
             return false;
 
         if (eocd64.Signature != 0x07064B50)
@@ -239,7 +239,7 @@ namespace Iridium
 
         ZIPENDLOCATOR eocd;
 
-        if (input_->ReadBulk(&eocd, sizeof(eocd), eocd_offset_) != sizeof(eocd))
+        if (!input_->TryReadBulk(&eocd, sizeof(eocd), eocd_offset_))
             return false;
 
         if (eocd.Signature != 0x06054B50)
@@ -265,7 +265,7 @@ namespace Iridium
 
         ZIP64ENDLOCATORRECORD eocd64;
 
-        if (input_->ReadBulk(&eocd64, sizeof(eocd64), eocd64_offset_) != sizeof(eocd64))
+        if (!input_->TryReadBulk(&eocd64, sizeof(eocd64), eocd64_offset_))
             return false;
 
         if (eocd64.Signature != 0x06064B50)
@@ -316,7 +316,7 @@ namespace Iridium
             {
                 entry_name.resize(entry.FileNameLength);
 
-                if (stream.Read(entry_name.data(), entry_name.size()) != entry_name.size())
+                if (!stream.TryRead(entry_name.data(), entry_name.size()))
                     break;
 
                 if ((entry_name.back() != '/') && (entry_name.back() != '\\') &&
@@ -341,7 +341,7 @@ namespace Iridium
         {
             ZIPFILERECORD record;
 
-            if (input_->ReadBulk(&record, sizeof(record), entry.HeaderOffset) != sizeof(record))
+            if (!input_->TryReadBulk(&record, sizeof(record), entry.HeaderOffset))
                 return nullptr;
 
             if (record.Signature != 0x04034B50)

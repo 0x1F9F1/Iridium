@@ -108,10 +108,10 @@ extern "C"
         int32_t dwordC;
         int32_t dword10;
         int32_t dword14;
-        int32_t dword18;
+        int32_t spaceSpeedTradeoffBytes;
         int32_t dword1C;
         int32_t dword20;
-        int32_t maxLocalDictionarySize; // (<= OODLELZ_LOCALDICTIONARYSIZE_MAX)
+        int32_t dictionarySize; // (<= OODLELZ_LOCALDICTIONARYSIZE_MAX)
         int32_t dword28;
     };
 

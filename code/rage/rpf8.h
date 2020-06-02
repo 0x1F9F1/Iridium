@@ -153,11 +153,7 @@ namespace Iridium::Rage
 
         u64 GetSize() const
         {
-            if (!IsDirectory() && !IsResource())
-            {
-                return qword10;
-            }
-            else if (IsResource())
+            if (IsResource())
             {
                 u64 size0 = GetVirtualSize();
                 u64 size1 = GetPhysicalSize();
@@ -166,7 +162,7 @@ namespace Iridium::Rage
             }
             else
             {
-                return 0;
+                return !IsDirectory() ? qword10 : 0;
             }
         }
 

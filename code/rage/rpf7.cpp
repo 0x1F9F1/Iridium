@@ -246,8 +246,6 @@ namespace Iridium::Rage
 
             cipher->Update(entries.data() + 1, (entries.size() - 1) * sizeof(fiPackEntry7));
             cipher->Update(names.data(), names.size());
-
-            return true;
         }
 
         for (fiPackEntry7& entry : entries)

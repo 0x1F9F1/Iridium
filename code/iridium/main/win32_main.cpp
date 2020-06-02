@@ -8,7 +8,7 @@ int WINAPI WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPSTR /
     int argc = 0;
     LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-    char** argv = new char*[argc + 1];
+    char** argv = new char*[static_cast<std::size_t>(argc) + 1];
     argv[argc] = nullptr;
 
     for (int i = 0; i < argc; ++i)
