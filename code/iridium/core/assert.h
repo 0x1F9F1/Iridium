@@ -16,44 +16,45 @@ namespace Iridium
         unsigned int linenum;
     };
 
-    [[noreturn]] void IrReportAssertion(const IrAssertData* data);
+    [[noreturn]] void IrReportAssertion(const IrAssertData& data);
+
+    struct IrCheckData
+    {
+        const char* message;
+        const char* filename;
+        unsigned int linenum;
+    };
+
+    [[noreturn]] void IrReportCheck(const IrCheckData& data);
 } // namespace Iridium
 
-#ifndef IRIDIUM_FUNCTION
-#    if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-#        define IRIDIUM_FUNCTION __func__
-#    elif ((__GNUC__ >= 2) || defined(_MSC_VER) || defined(__WATCOMC__))
-#        define IRIDIUM_FUNCTION __FUNCTION__
-#    else
-#        define IRIDIUM_FUNCTION "???"
-#    endif
-#endif
+#define IrEnabledAssert(CONDITION, MESSAGE)                                                     \
+    do                                                                                          \
+    {                                                                                           \
+        if (IR_UNLIKELY(!(CONDITION)))                                                          \
+        {                                                                                       \
+            static const ::Iridium::IrAssertData ir_assert_data {                               \
+                #CONDITION, MESSAGE, IR_FILE, IR_FUNCTION, static_cast<unsigned int>(IR_LINE)}; \
+            ::Iridium::IrReportAssertion(ir_assert_data);                                       \
+        }                                                                                       \
+    } while (false)
 
-#ifndef IRIDIUM_FILE
-#    define IRIDIUM_FILE __FILE__
-#endif
+#define IrEnabledCheck(CONDITION, MESSAGE)               \
+    (IR_LIKELY((CONDITION)) ? void()                     \
+                            : (::Iridium::IrReportCheck( \
+                                  ::Iridium::IrCheckData {MESSAGE, IR_FILE, static_cast<unsigned int>(IR_LINE)})))
 
-#ifndef IRIDIUM_LINE
-#    define IRIDIUM_LINE __LINE__
-#endif
+#define IrDisabledAssert(CONDITION, MESSAGE) void(sizeof(!(CONDITION)))
 
-#define IrEnabledAssert(CONDITION, MESSAGE)                                                                    \
-    do                                                                                                         \
-    {                                                                                                          \
-        if (IR_UNLIKELY(!(CONDITION)))                                                                         \
-        {                                                                                                      \
-            static const ::Iridium::IrAssertData ir_assert_data {                                              \
-                #CONDITION, MESSAGE, IRIDIUM_FILE, IRIDIUM_FUNCTION, static_cast<unsigned int>(IRIDIUM_LINE)}; \
-            ::Iridium::IrReportAssertion(&ir_assert_data);                                                     \
-        }                                                                                                      \
-    } while (false);
-
-#define IrDisabledAssert(CONDITION, MESSAGE) static_cast<void>(sizeof(!(CONDITION)));
+#define IrDisabledCheck(CONDITION, MESSAGE) void(sizeof(!(CONDITION)))
 
 #ifdef IRIDIUM_DEBUG
 #    define IrDebugAssert IrEnabledAssert
+#    define IrDebugCheck IrEnabledCheck
 #else
 #    define IrDebugAssert IrDisabledAssert
+#    define IrDebugCheck IrDisabledCheck
 #endif
 
 #define IrAssert IrEnabledAssert
+#define IrCheck IrEnabledCheck

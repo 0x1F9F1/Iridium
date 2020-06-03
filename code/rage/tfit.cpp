@@ -60,7 +60,7 @@ namespace Iridium
     TfitEcbCipher::TfitEcbCipher(const u32 keys[17][4], const u32 tables[17][16][256])
         : keys_(keys)
         , tables_(tables)
-    { }
+    {}
 
     usize TfitEcbCipher::Update(const u8* input, u8* output, usize length)
     {

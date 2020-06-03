@@ -49,7 +49,7 @@ namespace Iridium
             inline FileNodeT(StringHash hash, StringHeap::Handle name, FileEntry entry)
                 : FileNode(hash, name, NodeType::FileT)
                 , Entry(std::move(entry))
-            { }
+            {}
 
             FileEntry Entry;
         };
@@ -66,7 +66,7 @@ namespace Iridium
     inline VirtualFileSystem<T>::FileEntry::FileEntry(T entry, Rc<Stream> data)
         : Entry(std::move(entry))
         , Data(std::move(data))
-    { }
+    {}
 
     template <typename T>
     inline VirtualFileSystem<T>::~VirtualFileSystem()
@@ -216,7 +216,7 @@ namespace Iridium
             , names_(names)
             , prefix_(folder->Name.GetSize())
             , callback_(std::move(callback))
-        { }
+        {}
 
         bool Next(FolderEntry& entry) override
         {

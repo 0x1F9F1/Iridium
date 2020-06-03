@@ -13,7 +13,7 @@ namespace Iridium
 {
     FileArchive::FileArchive(Rc<Stream> input)
         : input_(std::move(input))
-    { }
+    {}
 
     FileArchive::~FileArchive() = default;
 

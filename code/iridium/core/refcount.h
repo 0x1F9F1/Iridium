@@ -4,14 +4,22 @@
 
 namespace Iridium
 {
-    class RefCounted
+    class RefCounted : public Base
     {
     public:
-        inline constexpr RefCounted() noexcept = default;
-        inline virtual ~RefCounted() = default;
+        IR_FORCEINLINE constexpr RefCounted() noexcept = default;
+        IR_FORCEINLINE ~RefCounted() override = default;
 
-        RefCounted(const RefCounted&) = delete;
-        RefCounted& operator=(const RefCounted&) = delete;
+        IR_FORCEINLINE RefCounted(const RefCounted&) noexcept
+        {
+            // Don't modify ref_count_
+        }
+
+        IR_FORCEINLINE RefCounted& operator=(const RefCounted&) noexcept
+        {
+            // Don't modify ref_count_
+            return *this;
+        }
 
         IR_FORCEINLINE u32 AddRef() noexcept
         {
@@ -30,18 +38,28 @@ namespace Iridium
             return refs;
         }
 
+        VIRTUAL_META_DECLARE;
+
     private:
         u32 ref_count_ {1};
     };
 
-    class AtomicRefCounted
+    class AtomicRefCounted : public Base
     {
     public:
-        inline constexpr AtomicRefCounted() noexcept = default;
-        inline virtual ~AtomicRefCounted() = default;
+        IR_FORCEINLINE constexpr AtomicRefCounted() noexcept = default;
+        IR_FORCEINLINE ~AtomicRefCounted() override = default;
 
-        AtomicRefCounted(const AtomicRefCounted&) = delete;
-        AtomicRefCounted& operator=(const AtomicRefCounted&) = delete;
+        IR_FORCEINLINE AtomicRefCounted(const AtomicRefCounted&) noexcept
+        {
+            // Don't modify ref_count_
+        }
+
+        IR_FORCEINLINE AtomicRefCounted& operator=(const AtomicRefCounted&) noexcept
+        {
+            // Avoid modifying ref_count_
+            return *this;
+        }
 
         IR_FORCEINLINE u32 AddRef() noexcept
         {
@@ -60,6 +78,8 @@ namespace Iridium
             return refs;
         }
 
+        VIRTUAL_META_DECLARE;
+
     private:
         Atomic<u32> ref_count_ {1};
     };
@@ -72,26 +92,26 @@ namespace Iridium
 
         IR_FORCEINLINE constexpr Rc(std::nullptr_t) noexcept
             : ptr_(nullptr)
-        { }
+        {}
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE explicit Rc(U* ptr) noexcept
             : ptr_(ptr)
-        { }
+        {}
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc(Ptr<U> ptr) noexcept
             : ptr_(ptr.release())
-        { }
+        {}
 
         IR_FORCEINLINE Rc(Rc&& other) noexcept
             : ptr_(other.release())
-        { }
+        {}
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc(Rc<U>&& other) noexcept
             : ptr_(other.release())
-        { }
+        {}
 
         IR_FORCEINLINE Rc(const Rc& other) noexcept
             : ptr_(other.get())
@@ -219,7 +239,7 @@ namespace Iridium
         inline StaticRc(Args&&... args)
             : value_(std::forward<Args>(args)...)
             , ref_(AddRc(&value_))
-        { }
+        {}
 
         IR_FORCEINLINE operator const Rc<T> &() noexcept
         {

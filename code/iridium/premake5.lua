@@ -38,5 +38,3 @@ project "*"
 
 include "core"
 include "main"
-include "asset"
-include "crypto"

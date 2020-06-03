@@ -11,7 +11,7 @@ namespace Iridium
         FileDeviceExtension(StringView name, usize size)
             : Name(name)
             , Size(size)
-        { }
+        {}
 
     public:
         template <typename T>
@@ -29,6 +29,6 @@ namespace Iridium
     {
         FileDeviceExtensionT()
             : FileDeviceExtension(T::ExtensionName, sizeof(T))
-        { }
+        {}
     };
 } // namespace Iridium

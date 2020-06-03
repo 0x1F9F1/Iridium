@@ -1,5 +1,4 @@
 #include "findhandle.h"
-#include "irpch.h"
 
 namespace Iridium
 {

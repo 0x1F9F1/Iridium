@@ -261,7 +261,7 @@ namespace Iridium::Rage
         RageStridedStream(Rc<Stream> input, Ptr<RageStridedCipher> cipher)
             : input_(std::move(input))
             , cipher_(std::move(cipher))
-        { }
+        {}
 
         StreamPosition Tell() override;
         StreamPosition Size() override;

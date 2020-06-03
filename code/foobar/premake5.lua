@@ -23,5 +23,5 @@ project "FooBar"
     useIrPCH()
     includeIridium()
 
-    links { "IrCore", "IrMain", "IrAsset" }
+    links { "IrCore", "IrMain" }
     -- links { "IrAngel", "IrRage", "IrRealVirtuality" }

@@ -4,7 +4,7 @@ namespace Iridium
 {
     SyncStream::SyncStream(Rc<Stream> input)
         : input_(std::move(input))
-    { }
+    {}
 
     StreamPosition SyncStream::Seek(i64 offset, SeekWhence whence)
     {

@@ -151,7 +151,7 @@ namespace Iridium
 
     Win32FileStreamBase::Win32FileStreamBase(HANDLE handle)
         : handle_(handle)
-    { }
+    {}
 
     Win32FileStreamBase::~Win32FileStreamBase() = default;
 
