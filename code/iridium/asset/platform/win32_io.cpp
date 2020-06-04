@@ -27,8 +27,8 @@ namespace Iridium
 
         StreamPosition SetSize(u64 length) override;
 
-        bool IsBulkSync() override;
-        bool IsFullSync() override;
+        bool IsBulkSync() const override;
+        bool IsFullSync() const override;
 
     protected:
         HANDLE handle_ {INVALID_HANDLE_VALUE};
@@ -269,12 +269,12 @@ namespace Iridium
         return StreamPosition();
     }
 
-    bool Win32FileStreamBase::IsBulkSync()
+    bool Win32FileStreamBase::IsBulkSync() const
     {
         return true;
     }
 
-    bool Win32FileStreamBase::IsFullSync()
+    bool Win32FileStreamBase::IsFullSync() const
     {
         return true;
     }

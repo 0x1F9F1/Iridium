@@ -18,8 +18,8 @@ namespace Iridium
         usize Read(void* ptr, usize len) override;
         usize ReadBulk(void* ptr, usize len, u64 offset) override;
 
-        bool IsBulkSync();
-        bool IsFullSync();
+        bool IsBulkSync() const override;
+        bool IsFullSync() const override;
 
     private:
         Rc<Stream> input_ {nullptr};

@@ -17,7 +17,7 @@ namespace Iridium
         usize Read(void* ptr, usize len) override;
         usize ReadBulk(void* ptr, usize len, u64 offset) override;
 
-        bool IsBulkSync() override;
+        bool IsBulkSync() const override;
 
         Rc<Stream> GetBulkStream(u64& offset, u64 size) override;
 

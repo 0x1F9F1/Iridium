@@ -1,8 +1,9 @@
 #include "stream.h"
 
-#include "stream/sync.h"
-
+#include "core/meta/metadefine.h"
 #include "platform_io.h"
+#include "stream/buffered.h"
+#include "stream/sync.h"
 
 namespace Iridium
 {
@@ -154,14 +155,22 @@ namespace Iridium
         return nullptr;
     }
 
-    bool Stream::IsBulkSync()
+    bool Stream::IsBulkSync() const
     {
         return IsFullSync();
     }
 
-    bool Stream::IsFullSync()
+    bool Stream::IsFullSync() const
     {
         return false;
+    }
+
+    Rc<BufferedStream> Stream::Buffered(Rc<Stream> stream)
+    {
+        if (stream->IsA<BufferedStream>())
+            return StaticCast<BufferedStream>(std::move(stream));
+
+        return MakeRc<BufferedStream>(std::move(stream));
     }
 
     Rc<Stream> Stream::BulkSync(Rc<Stream> stream)
@@ -242,4 +251,7 @@ namespace Iridium
 
         return result;
     }
+
+    VIRTUAL_META_DEFINE_CHILD("Stream", Stream, AtomicRefCounted)
+    {}
 } // namespace Iridium

@@ -164,7 +164,7 @@ namespace Iridium
             return *this;
         }
 
-        IR_FORCEINLINE void reset() noexcept
+        IR_FORCEINLINE void reset()
         {
             Rc().swap(*this);
         }
@@ -264,5 +264,11 @@ namespace Iridium
             ptr->AddRef();
 
         return Rc<T>(ptr);
+    }
+
+    template <typename T, typename U>
+    [[nodiscard]] IR_FORCEINLINE Rc<T> StaticCast(Rc<U> ptr) noexcept
+    {
+        return Rc<T>(static_cast<T*>(ptr.release()));
     }
 } // namespace Iridium

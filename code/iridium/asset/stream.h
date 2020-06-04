@@ -11,6 +11,8 @@ namespace Iridium
         End
     };
 
+    class BufferedStream;
+
     class Stream : public AtomicRefCounted
     {
     public:
@@ -72,15 +74,15 @@ namespace Iridium
         // IsTemporary, IsRemote, IsRandomAccess
         // IsBuffered, IsCompressed, IsEncrypted
 
-        virtual bool IsBulkSync();
-        virtual bool IsFullSync();
+        virtual bool IsBulkSync() const;
+        virtual bool IsFullSync() const;
 
         // virtual bool IsCompressed()
         // virtual bool IsEncrypted()
         // virtual bool IsRemote()
         // virtual bool IsBuffered();
 
-        // static Rc<Stream> Buffered(Rc<Stream> stream);
+        static Rc<BufferedStream> Buffered(Rc<Stream> stream);
 
         static Rc<Stream> BulkSync(Rc<Stream> stream);
         static Rc<Stream> FullSync(Rc<Stream> stream);
@@ -90,11 +92,13 @@ namespace Iridium
         String ReadText();
         Vec<u8> ReadBytes();
 
-        bool TrySeek(u64 position);
-        bool TryRead(void* ptr, usize len);
-        bool TryWrite(const void* ptr, usize len);
-        bool TryReadBulk(void* ptr, usize len, u64 offset);
-        bool TryWriteBulk(const void* ptr, usize len, u64 offset);
+        [[nodiscard]] bool TrySeek(u64 position);
+        [[nodiscard]] bool TryRead(void* ptr, usize len);
+        [[nodiscard]] bool TryWrite(const void* ptr, usize len);
+        [[nodiscard]] bool TryReadBulk(void* ptr, usize len, u64 offset);
+        [[nodiscard]] bool TryWriteBulk(const void* ptr, usize len, u64 offset);
+
+        VIRTUAL_META_DECLARE;
     };
 
     inline bool Stream::TrySeek(u64 position)

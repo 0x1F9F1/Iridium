@@ -41,12 +41,12 @@ namespace Iridium
         return input_->ReadBulk(ptr, len, offset);
     }
 
-    bool SyncStream::IsBulkSync()
+    bool SyncStream::IsBulkSync() const
     {
         return true;
     }
 
-    bool SyncStream::IsFullSync()
+    bool SyncStream::IsFullSync() const
     {
         return true;
     }

@@ -2,6 +2,9 @@
 
 #ifdef _MSC_VER
 #    include <stdlib.h>
+#    pragma intrinsic(_byteswap_ushort)
+#    pragma intrinsic(_byteswap_ulong)
+#    pragma intrinsic(_byteswap_uint64)
 #else
 #    error "Unsupported Platform"
 #endif

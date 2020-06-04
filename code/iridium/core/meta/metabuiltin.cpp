@@ -10,8 +10,6 @@ namespace Iridium
 #define META_DEFINE_SCALAR_TYPE(TYPE, ID)              \
     struct ID##MetaType : ScalarMetaType               \
     {                                                  \
-        using ScalarMetaType::ScalarMetaType;          \
-                                                       \
         usize SizeOf() const override                  \
         {                                              \
             return sizeof(TYPE);                       \

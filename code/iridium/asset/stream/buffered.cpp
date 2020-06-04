@@ -2,6 +2,8 @@
 
 // #include "asset/assetmanager.h"
 
+#include "core/meta/metadefine.h"
+
 namespace Iridium
 {
     BufferedStream::BufferedStream(Rc<Stream> handle)
@@ -213,7 +215,7 @@ namespace Iridium
             output.pop_back();
         }
 
-        return true;
+        return total;
     }
 
     /*
@@ -355,4 +357,7 @@ namespace Iridium
             return true;
         }
     }
+
+    VIRTUAL_META_DEFINE_CHILD("BufferedStream", BufferedStream, Stream)
+    {}
 } // namespace Iridium

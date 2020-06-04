@@ -53,7 +53,7 @@ namespace Iridium
         return ReadInternal(ptr, len, offset);
     }
 
-    bool PartialStream::IsBulkSync()
+    bool PartialStream::IsBulkSync() const
     {
         return input_->IsBulkSync();
     }

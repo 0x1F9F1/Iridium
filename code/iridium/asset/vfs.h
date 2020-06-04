@@ -46,8 +46,8 @@ namespace Iridium
     private:
         struct FileNodeT : FileNode
         {
-            inline FileNodeT(StringHash hash, StringHeap::Handle name, FileEntry entry)
-                : FileNode(hash, name, NodeType::FileT)
+            inline FileNodeT(u32 hash, FileEntry entry)
+                : FileNode(hash, NodeType::FileT)
                 , Entry(std::move(entry))
             {}
 
@@ -83,7 +83,7 @@ namespace Iridium
     template <typename T>
     inline typename VirtualFileSystem<T>::FileEntry* VirtualFileSystem<T>::GetEntry(StringView path)
     {
-        auto [node, hash] = FindNode(path);
+        const auto [node, _] = FindNode(path);
 
         if (node == nullptr || node->Type != NodeType::FileT)
             return nullptr;
@@ -94,7 +94,7 @@ namespace Iridium
     template <typename T>
     inline bool VirtualFileSystem<T>::Visit(StringView path, Visitor& visitor)
     {
-        auto [node, hash] = FindNode(path);
+        const auto [node, _] = FindNode(path);
 
         if ((node == nullptr) || (node->Type != NodeType::Folder))
             return false;
@@ -104,7 +104,7 @@ namespace Iridium
 
         while (dnode)
         {
-            StringView here = names_.GetString(dnode->Name).substr(path.size());
+            StringView here = dnode->GetName().substr(path.size());
 
             if (visitor.VisitFolder(here))
             {
@@ -112,7 +112,7 @@ namespace Iridium
                 {
                     if (fnode->Type == NodeType::FileT)
                     {
-                        StringView name = names_.GetString(fnode->Name);
+                        StringView name = fnode->GetName();
 
                         visitor.VisitFile(Concat(here, name), static_cast<FileNodeT*>(fnode)->Entry);
                     }
@@ -150,7 +150,7 @@ namespace Iridium
     template <typename F>
     inline Rc<Stream> VirtualFileSystem<T>::Open(StringView path, bool read_only, F callback)
     {
-        auto [node, hash] = FindNode(path);
+        const auto [node, _] = FindNode(path);
 
         if (node == nullptr || node->Type != NodeType::FileT)
             return nullptr;
@@ -202,7 +202,7 @@ namespace Iridium
         if ((node == nullptr) || (node->Type != NodeType::Folder))
             return nullptr;
 
-        return MakeUnique<VirtualFindFileHandle<F>>(static_cast<FolderNode*>(node), &names_, std::move(callback));
+        return MakeUnique<VirtualFindFileHandle<F>>(static_cast<FolderNode*>(node), std::move(callback));
     }
 
     template <typename T>
@@ -210,11 +210,10 @@ namespace Iridium
     class VirtualFileSystem<T>::VirtualFindFileHandle final : public FindFileHandle
     {
     public:
-        VirtualFindFileHandle(FolderNode* folder, StringHeap* names, F callback)
+        VirtualFindFileHandle(FolderNode* folder, F callback)
             : files_(folder->Files)
             , folders_(folder->Folders)
-            , names_(names)
-            , prefix_(folder->Name.GetSize())
+            , prefix_(folder->GetName().size())
             , callback_(std::move(callback))
         {}
 
@@ -224,7 +223,7 @@ namespace Iridium
 
             if (files_)
             {
-                entry.Name = names_->GetString(files_->Name);
+                entry.Name = files_->GetName();
 
                 if (files_->Type == NodeType::FileT)
                 {
@@ -247,7 +246,7 @@ namespace Iridium
 
             if (folders_)
             {
-                StringView folder_path = names_->GetString(folders_->Name);
+                StringView folder_path = folders_->GetName();
 
                 entry.Name = folder_path.substr(prefix_, folder_path.size() - prefix_ - 1);
                 entry.IsFolder = true;
@@ -263,7 +262,6 @@ namespace Iridium
     private:
         FileNode* files_ {nullptr};
         FolderNode* folders_ {nullptr};
-        StringHeap* names_ {nullptr};
         usize prefix_ {0};
         F callback_;
     };
@@ -275,7 +273,9 @@ namespace Iridium
         if (name.empty() || name.back() == '/')
             return nullptr;
 
-        const auto [node, hash] = FindNode(name);
+        const auto [dir_name, file_name, dir_hash, full_hash] = SplitPath(name);
+
+        Node* node = FindNode(name, full_hash);
 
         if (node != nullptr)
         {
@@ -289,10 +289,9 @@ namespace Iridium
             return nullptr;
         }
 
-        const auto [dir_name, file_name] = SplitPath(name);
+        FileNodeT* fnode = CreateNode<FileNodeT>(file_name, full_hash, std::move(entry));
 
-        FileNodeT* fnode = new FileNodeT {hash, names_.AddString(file_name), std::move(entry)};
-        GetFolderNode(dir_name, true)->AddFile(fnode);
+        GetFolderNode(dir_name, dir_hash, true)->AddFile(fnode);
         LinkNodeHash(fnode);
 
         return fnode;

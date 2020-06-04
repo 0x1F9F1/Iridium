@@ -55,6 +55,8 @@ namespace Iridium
             std::initializer_list<StringView> parts, StringView ext, bool write_only = true, bool truncate = true);
         */
 
+        VIRTUAL_META_DECLARE;
+
     private:
         StreamPosition RawTell() const;
         StreamPosition RawSize() const;

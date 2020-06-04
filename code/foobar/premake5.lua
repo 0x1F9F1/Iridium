@@ -1,4 +1,6 @@
--- include "../angel"
+include "../iridium/asset"
+
+include "../angel"
 -- include "../rage"
 -- include "../real-virtuality"
 
@@ -23,5 +25,5 @@ project "FooBar"
     useIrPCH()
     includeIridium()
 
-    links { "IrCore", "IrMain" }
+    links { "IrCore", "IrMain", "IrAsset", "IrAngel" }
     -- links { "IrAngel", "IrRage", "IrRealVirtuality" }
