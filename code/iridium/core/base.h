@@ -19,12 +19,6 @@ namespace Iridium
             return IsA(GetMetaClass<T>());
         }
 
-        template <typename T>
-        T* Cast()
-        {
-            return IsA<T>() ? static_cast<T*>(this) : nullptr;
-        }
-
         META_DECLARE;
     };
 } // namespace Iridium
