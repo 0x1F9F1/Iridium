@@ -114,11 +114,11 @@ namespace Iridium
 
     inline bool Stream::TryReadBulk(void* ptr, usize len, u64 offset)
     {
-        return ReadBulk(ptr, len, offset) == offset;
+        return ReadBulk(ptr, len, offset) == len;
     }
 
     inline bool Stream::TryWriteBulk(const void* ptr, usize len, u64 offset)
     {
-        return WriteBulk(ptr, len, offset) == offset;
+        return WriteBulk(ptr, len, offset) == len;
     }
 } // namespace Iridium
