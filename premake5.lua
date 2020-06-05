@@ -30,6 +30,9 @@ workspace "Iridium"
     filter "platforms:Win64"
         architecture "x86_64"
 
+    filter "toolset:msc*"
+        buildoptions { "/permissive-", "/Zc:throwingNew" }
+
     filter {}
 
 group "Third Party"
