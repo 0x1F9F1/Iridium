@@ -84,11 +84,13 @@ namespace Iridium
 
         void CloseAll();
 
+        void InitTempPath();
+
         static Win32TempFileCache Instance;
 
     private:
-        CRITICAL_SECTION lock_;
-        wchar_t temp_path_[MAX_PATH + 1];
+        CRITICAL_SECTION lock_ {};
+        wchar_t temp_path_[MAX_PATH + 1] {};
         usize handle_count_ {0};
         HANDLE handles_[16] {};
     };
@@ -357,27 +359,6 @@ namespace Iridium
     Win32TempFileCache::Win32TempFileCache()
     {
         InitializeCriticalSection(&lock_);
-
-        usize written = GetTempPathW(static_cast<DWORD>(std::size(temp_path_)), temp_path_);
-
-        IrAssert(written != 0, "Could not get temp file path");
-        IrAssert(written + 11 < std::size(temp_path_), "Temp file path too long");
-
-        temp_path_[written++] = L'I';
-        temp_path_[written++] = L'r';
-
-        DWORD pid = GetCurrentProcessId();
-
-        for (usize i = 8; i--; pid >>= 4)
-            temp_path_[written + i] = L"0123456789ABCDEF"[pid & 0xF];
-
-        written += 8;
-
-        temp_path_[written++] = L'\\';
-        temp_path_[written] = L'\0';
-
-        IrAssert(CreateDirectoryW(temp_path_, NULL) || (GetLastError() == ERROR_ALREADY_EXISTS),
-            "Failed to create temp directory");
     }
 
     Win32TempFileCache::~Win32TempFileCache()
@@ -386,7 +367,8 @@ namespace Iridium
 
         DeleteCriticalSection(&lock_);
 
-        RemoveDirectoryW(temp_path_);
+        if (temp_path_[0])
+            RemoveDirectoryW(temp_path_);
     }
 
     HANDLE Win32TempFileCache::Open()
@@ -394,6 +376,11 @@ namespace Iridium
         HANDLE result = INVALID_HANDLE_VALUE;
 
         EnterCriticalSection(&lock_);
+
+        if (temp_path_[0] == L'\0')
+        {
+            InitTempPath();
+        }
 
         if (handle_count_ != 0)
         {
@@ -452,6 +439,30 @@ namespace Iridium
         }
 
         LeaveCriticalSection(&lock_);
+    }
+
+    IR_NOINLINE void Win32TempFileCache::InitTempPath()
+    {
+        usize written = GetTempPathW(static_cast<DWORD>(std::size(temp_path_)), temp_path_);
+
+        IrAssert(written != 0, "Could not get temp file path");
+        IrAssert(written + 11 < std::size(temp_path_), "Temp file path too long");
+
+        temp_path_[written++] = L'I';
+        temp_path_[written++] = L'r';
+
+        DWORD pid = GetCurrentProcessId();
+
+        for (usize i = 8; i--; pid >>= 4)
+            temp_path_[written + i] = L"0123456789ABCDEF"[pid & 0xF];
+
+        written += 8;
+
+        temp_path_[written++] = L'\\';
+        temp_path_[written] = L'\0';
+
+        IrAssert(CreateDirectoryW(temp_path_, NULL) || (GetLastError() == ERROR_ALREADY_EXISTS),
+            "Failed to create temp directory");
     }
 
     static inline Rc<Stream> Win32CreateFile(const wchar_t* path, DWORD desired_access, DWORD share_mode,
