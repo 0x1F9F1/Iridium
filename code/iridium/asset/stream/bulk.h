@@ -22,10 +22,8 @@ namespace Iridium
         Rc<Stream> GetBulkStream(u64& offset, u64 size) override;
 
     private:
-        i64 here_ {0};
+        StreamPosition here_ {0};
 
         Rc<Stream> input_ {nullptr};
-
-        usize ReadInternal(void* ptr, usize len, u64 offset);
     };
 } // namespace Iridium

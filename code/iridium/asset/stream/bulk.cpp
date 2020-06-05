@@ -10,20 +10,17 @@ namespace Iridium
     {
         switch (whence)
         {
-            case SeekWhence::Set: break;
-            case SeekWhence::Cur: offset += here_; break;
-            case SeekWhence::End: offset += input_->Size().get(0); break;
+            case SeekWhence::Set: here_ = offset; break;
+            case SeekWhence::Cur: here_ += offset; break;
+            case SeekWhence::End: here_ = input_->Size() + offset; break;
         }
 
-        if (here_ < 0)
-            here_ = -1;
-
-        return StreamPosition::Checked(here_);
+        return here_;
     }
 
     StreamPosition BulkStream::Tell()
     {
-        return StreamPosition::Checked(here_);
+        return here_;
     }
 
     StreamPosition BulkStream::Size()
@@ -33,10 +30,10 @@ namespace Iridium
 
     usize BulkStream::Read(void* ptr, usize len)
     {
-        if (here_ < 0)
+        if (!here_.valid())
             return 0;
 
-        usize result = ReadInternal(ptr, len, here_);
+        usize result = input_->ReadBulk(ptr, len, here_.get());
 
         here_ += result;
 
@@ -45,7 +42,7 @@ namespace Iridium
 
     usize BulkStream::ReadBulk(void* ptr, usize len, u64 offset)
     {
-        return ReadInternal(ptr, len, offset);
+        return input_->ReadBulk(ptr, len, offset);
     }
 
     bool BulkStream::IsBulkSync() const
@@ -56,10 +53,5 @@ namespace Iridium
     Rc<Stream> BulkStream::GetBulkStream(u64&, u64)
     {
         return input_;
-    }
-
-    usize BulkStream::ReadInternal(void* ptr, usize len, u64 offset)
-    {
-        return input_->ReadBulk(ptr, len, offset);
     }
 } // namespace Iridium
