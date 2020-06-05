@@ -105,8 +105,10 @@ namespace Iridium
         {}
 
         IR_FORCEINLINE Rc(Rc&& other) noexcept
-            : ptr_(other.release())
-        {}
+            : ptr_(other.ptr_)
+        {
+            other.ptr_ = nullptr;
+        }
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc(Rc<U>&& other) noexcept
@@ -136,7 +138,15 @@ namespace Iridium
 
         IR_FORCEINLINE Rc& operator=(Rc&& other)
         {
-            assign(std::move(other));
+            if (this != &other)
+            {
+                T* old = ptr_;
+
+                ptr_ = other.release();
+
+                if (old)
+                    old->Release();
+            }
 
             return *this;
         }
@@ -144,14 +154,30 @@ namespace Iridium
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc& operator=(Rc<U>&& other)
         {
-            assign(std::move(other));
+            T* old = ptr_;
+
+            ptr_ = other.release();
+
+            if (old)
+                old->Release();
 
             return *this;
         }
 
         IR_FORCEINLINE Rc& operator=(const Rc& other)
         {
-            assign(other);
+            T* old = ptr_;
+
+            ptr_ = other.get();
+
+            if (old != ptr_)
+            {
+                if (ptr_)
+                    ptr_->AddRef();
+
+                if (old)
+                    old->Release();
+            }
 
             return *this;
         }
@@ -159,39 +185,39 @@ namespace Iridium
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc& operator=(const Rc<U>& other)
         {
-            assign(other);
+            T* old = ptr_;
+
+            ptr_ = other.get();
+
+            if (old != ptr_)
+            {
+                if (ptr_)
+                    ptr_->AddRef();
+
+                if (old)
+                    old->Release();
+            }
 
             return *this;
         }
 
-        IR_FORCEINLINE void reset()
+        IR_FORCEINLINE void reset(std::nullptr_t ptr = nullptr)
         {
-            Rc().swap(*this);
+            T* old = ptr_;
+            ptr_ = ptr;
+
+            if (old)
+                old->Release();
         }
 
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE void reset(U* ptr)
         {
-            Rc(ptr).swap(*this);
-        }
+            T* old = ptr_;
+            ptr_ = ptr;
 
-        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-        IR_FORCEINLINE void assign(Rc<U>&& ptr)
-        {
-            reset();
-
-            ptr_ = std::exchange(ptr.ptr_, nullptr);
-        }
-
-        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-        IR_FORCEINLINE void assign(const Rc<U>& ptr)
-        {
-            reset();
-
-            ptr_ = ptr.ptr_;
-
-            if (ptr_)
-                ptr_->AddRef();
+            if (old)
+                old->Release();
         }
 
         IR_FORCEINLINE T& operator*() const noexcept
@@ -211,12 +237,16 @@ namespace Iridium
 
         IR_FORCEINLINE [[nodiscard]] T* release() noexcept
         {
-            return std::exchange(ptr_, nullptr);
+            T* ptr = ptr_;
+            ptr_ = nullptr;
+            return ptr;
         }
 
         IR_FORCEINLINE void swap(Rc& other) noexcept
         {
-            std::swap(ptr_, other.ptr_);
+            T* ptr = ptr_;
+            ptr_ = other.ptr_;
+            other.ptr_ = ptr;
         }
 
         IR_FORCEINLINE explicit operator bool() const noexcept
@@ -224,13 +254,13 @@ namespace Iridium
             return ptr_ != nullptr;
         }
 
-        template <typename U>
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE bool operator==(const Rc<U>& other) const noexcept
         {
             return ptr_ == other.ptr_;
         }
 
-        template <typename U>
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE bool operator!=(const Rc<U>& other) const noexcept
         {
             return ptr_ != other.ptr_;

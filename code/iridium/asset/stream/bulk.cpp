@@ -3,7 +3,7 @@
 namespace Iridium
 {
     BulkStream::BulkStream(Rc<Stream> handle)
-        : input_(handle)
+        : input_(std::move(handle))
     {}
 
     StreamPosition BulkStream::Seek(i64 offset, SeekWhence whence)
