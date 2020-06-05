@@ -23,18 +23,8 @@ namespace Iridium
 
         bool Flush() override;
 
+        // Flushes the buffer to the underlying file without then flushing the underlying file
         bool FlushBuffer();
-
-        /*
-        template <typename T>
-        [[nodiscard]] bool Get(T& value);
-
-        template <typename T>
-        [[nodiscard]] bool Get(T* values, usize count);
-
-        template <typename T>
-        T Get();
-        */
 
         i32 GetCh();
         i32 UnGetCh(i32 ch);
@@ -45,35 +35,14 @@ namespace Iridium
 
         void PutString(StringView str);
 
-        /*
-        static Ptr<BufferedStream> Open(StringView path, bool read_only = true);
-        static Ptr<BufferedStream> Create(StringView path, bool write_only = true, bool truncate = true);
-
-        static Ptr<BufferedStream> Open(std::initializer_list<StringView> parts, StringView ext, bool read_only = true);
-
-        static Ptr<BufferedStream> Create(
-            std::initializer_list<StringView> parts, StringView ext, bool write_only = true, bool truncate = true);
-        */
-
         VIRTUAL_META_DECLARE;
 
     private:
-        StreamPosition RawTell() const;
-        StreamPosition RawSize() const;
-        StreamPosition RawSeek(i64 offset, SeekWhence whence);
-
-        usize RawRead(void* ptr, usize len);
-        usize RawWrite(const void* ptr, usize len);
-
-        bool SeekBuffer(i64 offset, SeekWhence whence);
-
-        bool RawFlush();
-
         bool FlushReads();
         bool FlushWrites();
 
         // Underlying file handle
-        Rc<Stream> handle_;
+        Rc<Stream> handle_ {};
 
         // Buffer for more efficient reads/writes
         Ptr<u8[]> buffer_ {nullptr};
@@ -95,33 +64,6 @@ namespace Iridium
     {
         return position_ + buffer_head_;
     }
-
-    /*
-    template <typename T>
-    inline bool BufferedStream::Get(T& value)
-    {
-        return Read(&value, sizeof(value)) == sizeof(value);
-    }
-
-    template <typename T>
-    inline bool BufferedStream::Get(T* values, usize count)
-    {
-        return Read(values, count * sizeof(*values)) == count * sizeof(*values);
-    }
-
-    template <typename T>
-    inline T BufferedStream::Get()
-    {
-        T value;
-
-        if (Read(&value, sizeof(value)) == sizeof(value))
-        {
-            return value;
-        }
-
-        return {};
-    }
-    */
 
     inline i32 BufferedStream::GetCh()
     {

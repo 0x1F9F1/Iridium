@@ -1,7 +1,5 @@
 #include "buffered.h"
 
-// #include "asset/assetmanager.h"
-
 #include "core/meta/metadefine.h"
 
 namespace Iridium
@@ -11,7 +9,7 @@ namespace Iridium
     {
         buffer_capacity_ = 4096;
         buffer_.reset(new u8[buffer_capacity_]);
-        position_ = RawTell();
+        position_ = handle_->Tell();
     }
 
     BufferedStream::~BufferedStream()
@@ -21,18 +19,32 @@ namespace Iridium
 
     StreamPosition BufferedStream::Size()
     {
-        return FlushWrites() ? RawSize() : StreamPosition();
+        return FlushWrites() ? handle_->Size() : StreamPosition();
     }
 
     StreamPosition BufferedStream::Seek(i64 offset, SeekWhence whence)
     {
-        if (SeekBuffer(offset, whence))
-        {
-            return position_ + buffer_head_;
-        }
-
         if (buffer_read_ != 0)
         {
+            if (position_.valid() && whence != SeekWhence::End)
+            {
+                i64 rel_offset = offset;
+
+                switch (whence) // Calculate the offset relative to the start of the buffer
+                {
+                    case SeekWhence::Set: rel_offset -= position_.get(); break;
+                    case SeekWhence::Cur: rel_offset += buffer_head_; break;
+                    default: rel_offset = -1;
+                }
+
+                if (rel_offset >= 0 && rel_offset <= buffer_read_)
+                {
+                    buffer_head_ = static_cast<u32>(rel_offset);
+
+                    return position_ + buffer_head_;
+                }
+            }
+
             if (whence == SeekWhence::Cur)
             {
                 offset -= buffer_read_ - buffer_head_;
@@ -43,7 +55,7 @@ namespace Iridium
             return StreamPosition();
         }
 
-        position_ = RawSeek(offset, whence);
+        position_ = handle_->Seek(offset, whence);
 
         buffer_head_ = 0;
         buffer_read_ = 0;
@@ -53,9 +65,7 @@ namespace Iridium
 
     usize BufferedStream::Read(void* ptr, usize len)
     {
-        IrDebugAssert(position_.valid(), "Cannot read from unknown position");
-
-        if (!FlushWrites())
+        if (!position_.valid() || !FlushWrites())
         {
             return 0;
         }
@@ -79,7 +89,7 @@ namespace Iridium
 
             if (len >= buffer_capacity_)
             {
-                usize const raw_read = RawRead(ptr, len);
+                usize const raw_read = handle_->Read(ptr, len);
 
                 buffer_head_ = 0;
                 buffer_read_ = 0;
@@ -90,7 +100,7 @@ namespace Iridium
                 return total;
             }
 
-            usize const raw_read = RawRead(&buffer_[0], buffer_capacity_);
+            usize const raw_read = handle_->Read(&buffer_[0], buffer_capacity_);
 
             buffer_head_ = 0;
             buffer_read_ = static_cast<u32>(raw_read);
@@ -129,7 +139,7 @@ namespace Iridium
                 len -= available;
                 total += available;
 
-                usize const written = RawWrite(&buffer_[0], buffer_capacity_);
+                usize const written = handle_->Write(&buffer_[0], buffer_capacity_);
 
                 position_ += written;
                 buffer_head_ = 0;
@@ -150,7 +160,7 @@ namespace Iridium
         }
         else if (FlushWrites())
         {
-            usize const written = RawWrite(ptr, len);
+            usize const written = handle_->Write(ptr, len);
 
             position_ += written;
 
@@ -218,49 +228,6 @@ namespace Iridium
         return total;
     }
 
-    /*
-    Ptr<BufferedStream> BufferedStream::Open(StringView path, bool read_only)
-    {
-        Rc<Stream> handle = AssetManager::Open(path, read_only);
-
-        if (!handle)
-            return nullptr;
-
-        return MakeUnique<BufferedStream>(std::move(handle));
-    }
-
-    Ptr<BufferedStream> BufferedStream::Create(StringView path, bool write_only, bool truncate)
-    {
-        Rc<Stream> handle = AssetManager::Create(path, write_only, truncate);
-
-        if (!handle)
-            return nullptr;
-
-        return MakeUnique<BufferedStream>(std::move(handle));
-    }
-
-    Ptr<BufferedStream> BufferedStream::Open(std::initializer_list<StringView> parts, StringView ext, bool read_only)
-    {
-        Rc<Stream> handle = AssetManager::Open(parts, ext, read_only);
-
-        if (!handle)
-            return nullptr;
-
-        return MakeUnique<BufferedStream>(std::move(handle));
-    }
-
-    Ptr<BufferedStream> BufferedStream::Create(
-        std::initializer_list<StringView> parts, StringView ext, bool write_only, bool truncate)
-    {
-        Rc<Stream> handle = AssetManager::Create(parts, ext, write_only, truncate);
-
-        if (!handle)
-            return nullptr;
-
-        return MakeUnique<BufferedStream>(std::move(handle));
-    }
-    */
-
     bool BufferedStream::FlushBuffer()
     {
         return FlushReads() && FlushWrites();
@@ -268,94 +235,37 @@ namespace Iridium
 
     bool BufferedStream::Flush()
     {
-        return FlushBuffer() && RawFlush();
+        return FlushBuffer() && handle_->Flush();
     }
 
-    inline StreamPosition BufferedStream::RawTell() const
-    {
-        return handle_->Tell();
-    }
-
-    inline StreamPosition BufferedStream::RawSize() const
-    {
-        return handle_->Size();
-    }
-
-    inline StreamPosition BufferedStream::RawSeek(i64 offset, SeekWhence whence)
-    {
-        return handle_->Seek(offset, whence);
-    }
-
-    inline usize BufferedStream::RawRead(void* ptr, usize len)
-    {
-        return handle_->Read(ptr, len);
-    }
-
-    inline usize BufferedStream::RawWrite(const void* ptr, usize len)
-    {
-        return handle_->Write(ptr, len);
-    }
-
-    inline bool BufferedStream::SeekBuffer(i64 offset, SeekWhence whence)
-    {
-        if (buffer_read_ == 0 || !position_.valid())
-            return false;
-
-        switch (whence)
-        {
-            case SeekWhence::Set: offset -= position_.get(); break;
-            case SeekWhence::Cur: offset += buffer_head_; break;
-            case SeekWhence::End: return false;
-        }
-
-        if ((offset < 0) || (offset > buffer_read_))
-            return false;
-
-        buffer_head_ = static_cast<u32>(offset);
-
-        return true;
-    }
-
-    inline bool BufferedStream::RawFlush()
-    {
-        return handle_->Flush();
-    }
-
-    inline bool BufferedStream::FlushReads()
+    IR_FORCEINLINE bool BufferedStream::FlushReads()
     {
         if (buffer_read_ != 0 && buffer_read_ != buffer_head_ && position_.valid())
         {
-            position_ = RawSeek(position_.get() + buffer_head_, SeekWhence::Set);
+            position_ = handle_->Seek(position_.get() + buffer_head_, SeekWhence::Set);
 
             buffer_head_ = 0;
             buffer_read_ = 0;
+        }
 
-            return position_.valid();
-        }
-        else
-        {
-            return true;
-        }
+        return position_.valid();
     }
 
-    inline bool BufferedStream::FlushWrites()
+    IR_FORCEINLINE bool BufferedStream::FlushWrites()
     {
-        if (buffer_read_ == 0 && buffer_head_ != 0)
-        {
-            // TODO: Better handle incomplete writes
-            usize const written = RawWrite(&buffer_[0], buffer_head_);
-
-            IrDebugAssert((written == 0) || (written == buffer_head_), "Cannot partially flush writes");
-
-            position_ += written;
-            buffer_head_ = 0;
-
-            return written != 0;
-        }
-        else
+        if (buffer_head_ <= buffer_read_)
         {
             return true;
         }
+
+        usize const written = handle_->Write(&buffer_[0], buffer_head_);
+
+        bool success = written == buffer_head_;
+
+        position_ += written;
+        buffer_head_ = 0;
+
+        return success;
     }
 
     VIRTUAL_META_DEFINE_CHILD("BufferedStream", BufferedStream, Stream)
