@@ -22,7 +22,7 @@ namespace Iridium
         Rc<Stream> GetBulkStream(u64& offset, u64 size) override;
 
     private:
-        StreamPosition here_ {0};
+        StreamPosition here_ {0_u64};
 
         Rc<Stream> input_ {nullptr};
     };

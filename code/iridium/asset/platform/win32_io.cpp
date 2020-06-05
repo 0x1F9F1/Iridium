@@ -262,7 +262,7 @@ namespace Iridium
         LARGE_INTEGER result;
         result.QuadPart = 0;
 
-        if (SetFilePointerEx(handle_, distance, &result, FILE_BEGIN) && (static_cast<u64>(result.QuadPart) == length) &&
+        if (SetFilePointerEx(handle_, distance, &result, FILE_BEGIN) && (result.QuadPart == i64(length)) &&
             SetEndOfFile(handle_))
             return length;
 

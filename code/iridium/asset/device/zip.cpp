@@ -291,7 +291,7 @@ namespace Iridium
 
         BufferedStream stream(input_);
 
-        if (stream.Seek(cd_offset_, SeekWhence::Set) != cd_offset_)
+        if (!stream.TrySeek(cd_offset_))
             return false;
 
         ReserveFiles(static_cast<usize>(cd_entries_));

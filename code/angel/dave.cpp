@@ -332,7 +332,7 @@ namespace Iridium::Angel
             {
                 output->Seek(offset, SeekWhence::Set);
 
-                if (input->Seek(0, SeekWhence::Set) != 0)
+                if (!input->TrySeek(0))
                 {
                     input = nullptr;
                     input = device->Open(file, true);

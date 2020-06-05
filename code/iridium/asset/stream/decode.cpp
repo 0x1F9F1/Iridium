@@ -4,7 +4,7 @@
 
 namespace Iridium
 {
-    DecodeStream::DecodeStream(Rc<Stream> handle, Ptr<BinaryTransform> transform, i64 size, usize buffer_size)
+    DecodeStream::DecodeStream(Rc<Stream> handle, Ptr<BinaryTransform> transform, u64 size, usize buffer_size)
         : input_(std::move(handle))
         , transform_(std::move(transform))
         , size_(size)
@@ -27,7 +27,7 @@ namespace Iridium
         if (offset == current_)
             return offset;
 
-        if (offset == size_)
+        if (offset == i64(size_))
         {
             current_ = size_;
 
@@ -36,7 +36,7 @@ namespace Iridium
 
         if (offset < current_)
         {
-            if (input_->Seek(0, SeekWhence::Set) != u64(0))
+            if (!input_->TrySeek(0))
                 return StreamPosition();
 
             if (!transform_->Reset())
@@ -83,7 +83,7 @@ namespace Iridium
 
     usize DecodeStream::Read(void* ptr, usize len)
     {
-        if (current_ < 0 || current_ >= size_)
+        if (current_ < 0 || current_ >= i64(size_))
             return 0;
 
         len = static_cast<usize>(std::min<i64>(size_ - current_, len));

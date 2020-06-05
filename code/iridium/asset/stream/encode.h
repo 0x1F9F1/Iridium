@@ -23,7 +23,7 @@ namespace Iridium
         Rc<Stream> output_;
         Ptr<BinaryTransform> transform_;
 
-        i64 size_ {0};
+        u64 size_ {0};
 
         Ptr<u8[]> buffer_;
         usize buffer_size_ {0};
