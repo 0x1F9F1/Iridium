@@ -10,8 +10,8 @@ namespace Iridium
     {
         if (input_ == nullptr)
         {
-            start_ = start;
             input_ = handle;
+            start_ = start;
         }
     }
 

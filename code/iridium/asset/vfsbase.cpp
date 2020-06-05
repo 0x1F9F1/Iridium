@@ -274,7 +274,7 @@ namespace Iridium
         }
 
         if (!create)
-            return false;
+            return nullptr;
 
         auto [parent_path, folder_name] = ParentPath(name);
 

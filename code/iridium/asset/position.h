@@ -8,78 +8,67 @@ namespace Iridium
         IR_FORCEINLINE constexpr StreamPosition() noexcept = default;
 
         IR_FORCEINLINE constexpr StreamPosition(u64 value) noexcept
-            : value_(static_cast<i64>(value))
+            : value(static_cast<i64>(value))
         {}
 
         IR_FORCEINLINE constexpr StreamPosition(i64 value) noexcept
-            : value_(value < 0 ? -1 : value) // mov reg -1, cmp/test/add, cmovs
+            : value(value < 0 ? -1 : value) // mov reg -1, cmp/test/add, cmovs
         {}
 
         IR_FORCEINLINE constexpr i64 get() const noexcept
         {
-            return value_;
+            return value;
         }
 
         IR_FORCEINLINE constexpr u64 get(u64 default_value) const noexcept
         {
-            return (value_ >= 0) ? value_ : default_value;
+            return (value >= 0) ? value : default_value;
         }
 
         IR_FORCEINLINE constexpr bool valid() const noexcept
         {
-            return value_ >= 0;
+            return value >= 0;
         }
 
-        friend constexpr bool operator==(StreamPosition lhs, StreamPosition rhs) noexcept;
-        friend constexpr bool operator!=(StreamPosition lhs, StreamPosition rhs) noexcept;
-        friend constexpr bool operator<(StreamPosition lhs, StreamPosition rhs) noexcept;
-        friend constexpr bool operator<=(StreamPosition lhs, StreamPosition rhs) noexcept;
-        friend constexpr bool operator>(StreamPosition lhs, StreamPosition rhs) noexcept;
-        friend constexpr bool operator>=(StreamPosition lhs, StreamPosition rhs) noexcept;
-
-        friend constexpr StreamPosition operator+(StreamPosition lhs, i64 rhs) noexcept;
-        friend constexpr StreamPosition& operator+=(StreamPosition& lhs, i64 rhs) noexcept;
-
-    private:
-        i64 value_ {-1};
+        i64 value {-1};
     };
 
-    IR_FORCEINLINE constexpr bool operator==(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator==(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ == rhs.value_;
+        return lhs.value == rhs.value;
     }
 
-    IR_FORCEINLINE constexpr bool operator!=(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator!=(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ != rhs.value_;
+        return lhs.value != rhs.value;
     }
 
-    IR_FORCEINLINE constexpr bool operator<(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator<(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ < rhs.value_;
+        return lhs.value < rhs.value;
     }
 
-    IR_FORCEINLINE constexpr bool operator<=(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator<=(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ <= rhs.value_;
+        return lhs.value <= rhs.value;
     }
 
-    IR_FORCEINLINE constexpr bool operator>(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator>(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ > rhs.value_;
+        return lhs.value > rhs.value;
     }
 
-    IR_FORCEINLINE constexpr bool operator>=(StreamPosition lhs, StreamPosition rhs) noexcept
+    IR_FORCEINLINE constexpr bool operator>=(StreamPosition const lhs, StreamPosition const rhs) noexcept
     {
-        return lhs.value_ >= rhs.value_;
+        return lhs.value >= rhs.value;
     }
 
-    IR_FORCEINLINE constexpr StreamPosition operator+(StreamPosition lhs, i64 rhs) noexcept
+    IR_FORCEINLINE constexpr StreamPosition operator+(StreamPosition const lhs, i64 rhs) noexcept
     {
-        rhs += lhs.value_;
+        rhs += lhs.value;
 
         StreamPosition result;
-        result.value_ = ((rhs | lhs.value_) < 0) ? -1 : rhs;
+        result.value = ((rhs | lhs.value) < 0) ? -1 : rhs;
         return result;
     }
 

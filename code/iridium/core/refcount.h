@@ -136,7 +136,7 @@ namespace Iridium
 
         IR_FORCEINLINE Rc& operator=(Rc&& other)
         {
-            Rc(std::move(other)).swap(*this);
+            assign(std::move(other));
 
             return *this;
         }
@@ -144,14 +144,14 @@ namespace Iridium
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc& operator=(Rc<U>&& other)
         {
-            Rc(std::move(other)).swap(*this);
+            assign(std::move(other));
 
             return *this;
         }
 
         IR_FORCEINLINE Rc& operator=(const Rc& other)
         {
-            Rc(other).swap(*this);
+            assign(other);
 
             return *this;
         }
@@ -159,7 +159,7 @@ namespace Iridium
         template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
         IR_FORCEINLINE Rc& operator=(const Rc<U>& other)
         {
-            Rc(other).swap(*this);
+            assign(other);
 
             return *this;
         }
@@ -173,6 +173,25 @@ namespace Iridium
         IR_FORCEINLINE void reset(U* ptr)
         {
             Rc(ptr).swap(*this);
+        }
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        IR_FORCEINLINE void assign(Rc<U>&& ptr)
+        {
+            reset();
+
+            ptr_ = std::exchange(ptr.ptr_, nullptr);
+        }
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        IR_FORCEINLINE void assign(const Rc<U>& ptr)
+        {
+            reset();
+
+            ptr_ = ptr.ptr_;
+
+            if (ptr_)
+                ptr_->AddRef();
         }
 
         IR_FORCEINLINE T& operator*() const noexcept
