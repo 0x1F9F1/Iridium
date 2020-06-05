@@ -19,8 +19,6 @@ namespace Iridium
         friend const Rc<LocalFileDevice>& LocalFiles();
 
     private:
-        friend class StaticRc<LocalFileDevice>;
-
         static StaticRc<LocalFileDevice> s_LocalFiles;
     };
 

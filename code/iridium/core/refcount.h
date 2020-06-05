@@ -284,11 +284,15 @@ namespace Iridium
     class StaticRc
     {
     public:
-        template <typename... Args>
-        inline StaticRc(Args&&... args)
-            : value_(std::forward<Args>(args)...)
-            , ref_(AddRc(&value_))
+        IR_FORCEINLINE StaticRc(T value = {})
+            : value_(std::move(value))
+            , ref_(&value_)
         {}
+
+        IR_FORCEINLINE ~StaticRc()
+        {
+            ref_.release();
+        };
 
         IR_FORCEINLINE operator const Rc<T> &() noexcept
         {

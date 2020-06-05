@@ -373,19 +373,12 @@ namespace Iridium
 
     HANDLE Win32TempFileCache::Open()
     {
-        HANDLE result = INVALID_HANDLE_VALUE;
-
         EnterCriticalSection(&lock_);
 
         if (temp_path_[0] == L'\0')
-        {
             InitTempPath();
-        }
 
-        if (handle_count_ != 0)
-        {
-            result = handles_[--handle_count_];
-        }
+        HANDLE result = (handle_count_ != 0) ? handles_[--handle_count_] : INVALID_HANDLE_VALUE;
 
         LeaveCriticalSection(&lock_);
 
