@@ -10,7 +10,7 @@ namespace Iridium
     struct MetaTypeFactory;
 
     template <typename T>
-    IR_FORCEINLINE constexpr const MetaType* GetMetaType()
+    IR_FORCEINLINE const MetaType* GetMetaType()
     {
         return MetaTypeFactory<std::remove_cv_t<T>>::Create();
     }

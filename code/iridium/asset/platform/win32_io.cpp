@@ -1,3 +1,4 @@
+#include "asset/filewatcher.h"
 #include "asset/findhandle.h"
 #include "asset/platform_io.h"
 #include "asset/stream.h"
@@ -110,16 +111,26 @@ namespace Iridium
         return converted;
     }
 
-    static usize Win32FromWideChar(const wchar_t* input, char* buffer, usize buffer_len)
+    static usize Win32FromWideChar(const wchar_t* input, usize input_len, char* buffer, usize buffer_len)
     {
         if (buffer_len == 0)
             return 0;
 
-        usize converted = static_cast<usize>(
-            WideCharToMultiByte(CP_UTF8, 0, input, -1, buffer, static_cast<int>(buffer_len), nullptr, nullptr));
+        usize converted = static_cast<usize>(WideCharToMultiByte(
+            CP_UTF8, 0, input, static_cast<int>(input_len), buffer, static_cast<int>(buffer_len), nullptr, nullptr));
 
-        if (converted != 0)
-            converted -= 1;
+        if (input_len == SIZE_MAX)
+        {
+            if (converted != 0)
+                converted -= 1;
+        }
+        else
+        {
+            if (converted == buffer_len)
+                converted -= 1;
+
+            buffer[converted] = '\0';
+        }
 
         return converted;
     }
@@ -141,9 +152,9 @@ namespace Iridium
         return converted;
     }
 
-    static usize Win32FromNativePath(const wchar_t* input, char* buffer, usize buffer_len)
+    static usize Win32FromNativePath(const wchar_t* input, usize input_len, char* buffer, usize buffer_len)
     {
-        usize converted = Win32FromWideChar(input, buffer, buffer_len);
+        usize converted = Win32FromWideChar(input, input_len, buffer, buffer_len);
 
         for (char* find = std::strchr(buffer, '\\'); find; find = std::strchr(find + 1, '\\'))
             *find = '/';
@@ -321,7 +332,7 @@ namespace Iridium
 
         char buffer[MAX_PATH];
 
-        usize converted = Win32FromNativePath(data_.cFileName, buffer, std::size(buffer));
+        usize converted = Win32FromNativePath(data_.cFileName, SIZE_MAX, buffer, std::size(buffer));
 
         if (converted != 0)
             entry.Name = StringView(buffer, converted);
@@ -499,6 +510,146 @@ namespace Iridium
         return (attribs != INVALID_FILE_ATTRIBUTES) && (attribs & FILE_ATTRIBUTE_DIRECTORY);
     }
 
+    class Win32FileSystemWatcher final : public FileSystemWatcher
+    {
+    public:
+        Win32FileSystemWatcher(HANDLE handle, NotifyFilters filter)
+            : handle_(handle)
+        {
+            if (filter & NotifyFilter::FileName)
+                filter_ |= FILE_NOTIFY_CHANGE_FILE_NAME;
+
+            if (filter & NotifyFilter::FolderName)
+                filter_ |= FILE_NOTIFY_CHANGE_DIR_NAME;
+
+            if (filter & NotifyFilter::Attributes)
+                filter_ |= FILE_NOTIFY_CHANGE_ATTRIBUTES;
+
+            if (filter & NotifyFilter::Size)
+                filter_ |= FILE_NOTIFY_CHANGE_SIZE;
+
+            if (filter & NotifyFilter::LastWrite)
+                filter_ |= FILE_NOTIFY_CHANGE_LAST_WRITE;
+
+            if (filter & NotifyFilter::LastAccess)
+                filter_ |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
+
+            if (filter & NotifyFilter::CreationTime)
+                filter_ |= FILE_NOTIFY_CHANGE_CREATION;
+
+            if (handle_ != INVALID_HANDLE_VALUE)
+            {
+                event_.hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+
+                RefreshWatch();
+            }
+        }
+
+        ~Win32FileSystemWatcher() override
+        {
+            if (handle_ != INVALID_HANDLE_VALUE)
+            {
+                CancelIoEx(handle_, &event_);
+
+                DWORD bytes_read = 0;
+                GetOverlappedResult(handle_, &event_, &bytes_read, TRUE);
+
+                CloseHandle(event_.hEvent);
+                CloseHandle(handle_);
+            }
+        }
+
+        bool Poll(FileSystemListener& listener, u32 timeout) override
+        {
+            DWORD bytes_read = 0;
+
+            if (!GetOverlappedResultEx(handle_, &event_, &bytes_read, timeout, FALSE))
+                return false;
+
+            if (bytes_read != 0)
+                HandleEvents(listener);
+
+            RefreshWatch();
+
+            return true;
+        }
+
+    private:
+        inline bool RefreshWatch()
+        {
+            return ReadDirectoryChangesW(handle_, buffer_, sizeof(buffer_), FALSE, filter_, NULL, &event_, NULL);
+        }
+
+        inline void HandleEvents(FileSystemListener& listener)
+        {
+            FILE_NOTIFY_INFORMATION* info = nullptr;
+            FILE_NOTIFY_INFORMATION* next = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(buffer_);
+
+            while (info != next)
+            {
+                info = next;
+                next = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(
+                    reinterpret_cast<unsigned char*>(info) + info->NextEntryOffset);
+
+                if (info->Action == FILE_ACTION_RENAMED_NEW_NAME)
+                    continue;
+
+                char file_name[MAX_PATH];
+
+                Win32FromNativePath(
+                    info->FileName, info->FileNameLength / sizeof(info->FileName[0]), file_name, std::size(file_name));
+
+                switch (info->Action)
+                {
+                    case FILE_ACTION_ADDED: {
+                        listener.OnAdded(file_name);
+                        break;
+                    }
+
+                    case FILE_ACTION_REMOVED: {
+                        listener.OnRemoved(file_name);
+                        break;
+                    }
+
+                    case FILE_ACTION_MODIFIED: {
+                        listener.OnModified(file_name);
+                        break;
+                    }
+
+                    case FILE_ACTION_RENAMED_OLD_NAME: {
+                        char new_file_name[MAX_PATH];
+
+                        Win32FromNativePath(next->FileName, next->FileNameLength / sizeof(next->FileName[0]),
+                            new_file_name, std::size(new_file_name));
+
+                        listener.OnRenamed(file_name, new_file_name);
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        HANDLE handle_ {INVALID_HANDLE_VALUE};
+        DWORD filter_ {};
+        OVERLAPPED event_ {};
+        alignas(DWORD) BYTE buffer_[32 * 1024];
+    };
+
+    static inline Ptr<FileSystemWatcher> Win32CreateFileSystemWatcher(const wchar_t* path, NotifyFilters filter)
+    {
+        // CreateFileW, ReadDirectoryChangesW, CloseHandle
+
+        HANDLE handle = CreateFileW(path, GENERIC_READ | FILE_LIST_DIRECTORY,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+
+        if (handle == INVALID_HANDLE_VALUE)
+            return nullptr;
+
+        return MakeUnique<Win32FileSystemWatcher>(handle, filter);
+    }
+
     bool PlatformIoInit()
     {
         return true;
@@ -553,6 +704,16 @@ namespace Iridium
         wpath[converted++] = L'\0';
 
         return MakeUnique<Win32FindFileHandle>(wpath);
+    }
+
+    Ptr<FileSystemWatcher> PlatformCreateFileSystemWatcher(StringView path, NotifyFilters filter)
+    {
+        wchar_t wpath[MAX_PATH];
+
+        if (Win32ToNativePath(path, wpath, std::size(wpath)) == 0)
+            return nullptr;
+
+        return Win32CreateFileSystemWatcher(wpath, filter);
     }
 
     Rc<Stream> PlatformTempStream()
@@ -647,12 +808,14 @@ namespace Iridium
 
         wchar_t wpath_new[MAX_PATH];
 
-        if (ExpandEnvironmentStringsW(wpath, wpath_new, static_cast<DWORD>(std::size(wpath))) == 0)
+        DWORD length = ExpandEnvironmentStringsW(wpath, wpath_new, static_cast<DWORD>(std::size(wpath)));
+
+        if (length == 0)
             return String(path);
 
         char buffer[MAX_PATH];
 
-        usize converted = Win32FromNativePath(wpath_new, buffer, std::size(buffer));
+        usize converted = Win32FromNativePath(wpath_new, length, buffer, std::size(buffer));
 
         if (converted == 0)
             return String(path);

@@ -4,6 +4,14 @@ namespace Iridium
 {
     class Stream;
     class FindFileHandle;
+    class FileSystemWatcher;
+
+    namespace NotifyFilter
+    {
+        enum NotifyFilters : u32;
+    }
+
+    using NotifyFilter::NotifyFilters;
 
     // Initializes platform IO functionality
     bool PlatformIoInit();
@@ -22,6 +30,8 @@ namespace Iridium
     // Enumerates files in the specified folder
     // Returns a handle for file enumeration, or null on error
     Ptr<FindFileHandle> PlatformFindFiles(StringView path);
+
+    Ptr<FileSystemWatcher> PlatformCreateFileSystemWatcher(StringView path, NotifyFilters filter);
 
     // Creates a temporary stream
     // Returns a handle to the temporary stream, or null on error
