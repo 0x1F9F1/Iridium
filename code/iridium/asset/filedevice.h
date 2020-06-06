@@ -37,6 +37,8 @@ namespace Iridium
         // Move
         // GetPackProvider
 
+        // TODO: Add FileDeviceWatcher
+
         virtual bool Extension(StringView path, FileDeviceExtension& data);
     };
 } // namespace Iridium

@@ -11,12 +11,21 @@ namespace Iridium
 
         virtual const MetaClass* GetClass() const;
 
-        bool IsA(const MetaClass* parent) const;
+        bool IsA(const MetaClass* target) const;
 
         template <typename T>
         bool IsA() const
         {
-            return IsA(MetaClassStore<T>::Get());
+            const MetaClass* target = GetMetaClass<T>();
+
+            if constexpr (std::is_final_v<T>)
+            {
+                return GetClass() == target;
+            }
+            else
+            {
+                return IsA(target);
+            }
         }
 
         META_DECLARE;

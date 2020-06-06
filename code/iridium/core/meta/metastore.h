@@ -31,6 +31,8 @@ namespace Iridium
         void Free(void* ptr, usize len) const override;          \
                                                                  \
         META_TYPE_REFLECT_DERIVED(ID, ID##MetaType);             \
+                                                                 \
+        VIRTUAL_META_DECLARE;                                    \
     };                                                           \
                                                                  \
     extern const ID##MetaType ID##MetaType##Inst;                \
@@ -106,7 +108,7 @@ namespace Iridium
     {
         static IR_FORCEINLINE constexpr const MetaType* Create()
         {
-            return MetaClassStore<T>::Get();
+            return GetMetaClass<T>();
         }
     };
 } // namespace Iridium

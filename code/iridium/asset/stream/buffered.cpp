@@ -71,9 +71,8 @@ namespace Iridium
         }
 
         usize total = 0;
-        usize const buffered = buffer_read_ - buffer_head_;
 
-        if (len > buffered)
+        if (usize const buffered = buffer_read_ - buffer_head_; len > buffered)
         {
             if (buffered != 0)
             {

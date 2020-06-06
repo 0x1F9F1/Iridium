@@ -301,7 +301,7 @@ namespace Iridium
         for (; valid_; valid_ = FindNextFileW(handle_, &data_))
         {
             if ((data_.cFileName[0] != L'.') ||
-                (data_.cFileName[1] != L'\0') && (data_.cFileName[1] != L'.' || data_.cFileName[2] != L'\0'))
+                ((data_.cFileName[1] != L'\0') && (data_.cFileName[1] != L'.' || data_.cFileName[2] != L'\0')))
                 break;
         }
     }
@@ -588,7 +588,7 @@ namespace Iridium
                 exists = Win32FolderExists(wpath);
 
             if (!exists && !Win32CreateFolder(wpath))
-                return nullptr;
+                return false;
 
             *j = L'\\';
         }

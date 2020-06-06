@@ -216,7 +216,7 @@ namespace Iridium
 
     bool ZipArchive::FindEndOfCentralDirectory64()
     {
-        if (eocd_offset_ < sizeof(ZIP64ENDLOCATOR) + sizeof(ZIP64ENDLOCATORRECORD))
+        if (eocd_offset_ < i64(sizeof(ZIP64ENDLOCATOR) + sizeof(ZIP64ENDLOCATORRECORD)))
             return false;
 
         ZIP64ENDLOCATOR eocd64;
@@ -274,7 +274,7 @@ namespace Iridium
         if (eocd64.DiskNumber != eocd64.StartDiskNumber)
             return false;
 
-        if (eocd64.DirectoryRecordSize < sizeof(eocd64) - 12)
+        if (eocd64.DirectoryRecordSize < i64(sizeof(eocd64) - 12))
             return false;
 
         cd_offset_ = eocd64.DirectoryOffset;
@@ -357,9 +357,9 @@ namespace Iridium
             case CompressorId::Deflate:
                 return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry.Offset, entry.RawSize, input_),
                     MakeUnique<InflateTransform>(), entry.Size);
-        }
 
-        return nullptr;
+            default: return nullptr;
+        }
     }
 
     template class VirtualFileSystem<ZipArchive::ZipFileEntry>;

@@ -5,16 +5,7 @@ namespace Iridium
     class MetaClass;
 
     template <typename T>
-    struct MetaClassStore
-    {
-        static IR_FORCEINLINE constexpr const MetaClass* Get()
-        {
-            return &Instance;
-        }
-
-    private:
-        static MetaClass Instance;
-    };
+    extern const MetaClass* GetMetaClass();
 } // namespace Iridium
 
 #define META_DECLARE struct MetaData

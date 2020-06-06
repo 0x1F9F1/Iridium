@@ -66,8 +66,8 @@ namespace Iridium
             case CompressorId::Deflate:
                 return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry.Offset, entry.RawSize, input_),
                     MakeUnique<InflateTransform>(), entry.Size);
-        }
 
-        return nullptr;
+            default: return nullptr;
+        }
     }
 } // namespace Iridium

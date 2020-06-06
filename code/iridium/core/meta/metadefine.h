@@ -5,10 +5,29 @@
 #include "metaalloc.h"
 #include "metastore.h"
 
-#define META_DEFINE_CLASS_STORE(NAME, TYPE, PARENT, DECLARE)       \
-    template <>                                                    \
-    ::Iridium::MetaClass Iridium::MetaClassStore<TYPE>::Instance { \
-        NAME, sizeof(TYPE), alignof(TYPE), PARENT, DECLARE, ::Iridium::MetaAllocate<TYPE>, ::Iridium::MetaFree<TYPE>};
+namespace Iridium
+{
+    template <typename T>
+    struct MetaClassStore_
+    {
+        static MetaClass Instance;
+    };
+} // namespace Iridium
+
+#if defined(__clang__)
+#    pragma clang diagnostic ignored "-Winvalid-offsetof"
+#    pragma clang diagnostic ignored "-Wextra-qualification"
+#endif
+
+#define META_DEFINE_CLASS_STORE(NAME, TYPE, PARENT, DECLARE)                                                           \
+    template <>                                                                                                        \
+    ::Iridium::MetaClass MetaClassStore_<TYPE>::Instance {                                                             \
+        NAME, sizeof(TYPE), alignof(TYPE), PARENT, DECLARE, ::Iridium::MetaAllocate<TYPE>, ::Iridium::MetaFree<TYPE>}; \
+    template <>                                                                                                        \
+    const MetaClass* Iridium::GetMetaClass<TYPE>()                                                                     \
+    {                                                                                                                  \
+        return &MetaClassStore_<TYPE>::Instance;                                                                       \
+    }
 
 #define META_DEFINE_META_DATA(TYPE)                       \
     struct TYPE::MetaData                                 \
@@ -20,7 +39,7 @@
 #define META_DEFINE_GET_CLASS(TYPE)                    \
     const ::Iridium::MetaClass* TYPE::GetClass() const \
     {                                                  \
-        return ::Iridium::MetaClassStore<TYPE>::Get(); \
+        return ::Iridium::GetMetaClass<TYPE>();        \
     }
 
 #define META_CHECK_IS_INTERCONVIRTIBLE(BASE, DERIVED)                                                       \
@@ -43,11 +62,11 @@
     META_DEFINE_GET_CLASS(TYPE)                                                  \
     META_DECLARE_FIELDS(TYPE)
 
-#define VIRTUAL_META_DEFINE_CHILD(NAME, TYPE, PARENT)                                             \
-    static_assert(std::is_base_of_v<PARENT, TYPE>, "Invalid Parent");                             \
-    META_DEFINE_META_DATA(TYPE)                                                                   \
-    META_DEFINE_CLASS_STORE(NAME, TYPE,                                                           \
-        (META_CHECK_IS_INTERCONVIRTIBLE(PARENT, TYPE), ::Iridium::MetaClassStore<PARENT>::Get()), \
-        &TYPE::MetaData::DeclareFields)                                                           \
-    META_DEFINE_GET_CLASS(TYPE)                                                                   \
+#define VIRTUAL_META_DEFINE_CHILD(NAME, TYPE, PARENT)                                      \
+    static_assert(std::is_base_of_v<PARENT, TYPE>, "Invalid Parent");                      \
+    META_DEFINE_META_DATA(TYPE)                                                            \
+    META_DEFINE_CLASS_STORE(NAME, TYPE,                                                    \
+        (META_CHECK_IS_INTERCONVIRTIBLE(PARENT, TYPE), ::Iridium::GetMetaClass<PARENT>()), \
+        &TYPE::MetaData::DeclareFields)                                                    \
+    META_DEFINE_GET_CLASS(TYPE)                                                            \
     META_DECLARE_FIELDS(TYPE)

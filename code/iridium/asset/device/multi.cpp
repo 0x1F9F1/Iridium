@@ -53,7 +53,7 @@ namespace Iridium
 
         if (find == mounts_.end())
         {
-            find = mounts_.emplace(mounts_.end(), Mount {String(prefix)});
+            find = mounts_.emplace(mounts_.end(), Mount {String(prefix), {}});
         }
 
         find->Devices.push_back({read_only, std::move(device)});

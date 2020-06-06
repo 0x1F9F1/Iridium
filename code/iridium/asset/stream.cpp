@@ -176,7 +176,7 @@ namespace Iridium
     Rc<Stream> Stream::BulkSync(Rc<Stream> stream)
     {
         if (stream->IsBulkSync())
-            return std::move(stream);
+            return stream;
 
         return MakeRc<SyncStream>(std::move(stream));
     }
@@ -184,7 +184,7 @@ namespace Iridium
     Rc<Stream> Stream::FullSync(Rc<Stream> stream)
     {
         if (stream->IsFullSync())
-            return std::move(stream);
+            return stream;
 
         return MakeRc<SyncStream>(std::move(stream));
     }

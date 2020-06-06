@@ -53,6 +53,11 @@ namespace Iridium
             return align_;
         }
 
+        const char* Name() const
+        {
+            return name_;
+        }
+
         void AddField(const char* name, usize offset, const MetaType* type);
 
         struct MetaField

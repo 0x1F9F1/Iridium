@@ -9,27 +9,30 @@ namespace Iridium
     VIRTUAL_META_DEFINE_CHILD("ScalarMetaType", ScalarMetaType, MetaType)
     {}
 
-#define META_DEFINE_SCALAR_TYPE(TYPE, ID)               \
-    usize ID##MetaType::SizeOf() const                  \
-    {                                                   \
-        return sizeof(TYPE);                            \
-    }                                                   \
-                                                        \
-    usize ID##MetaType::AlignOf() const                 \
-    {                                                   \
-        return alignof(TYPE);                           \
-    }                                                   \
-                                                        \
-    void* ID##MetaType::Allocate(usize len) const       \
-    {                                                   \
-        return MetaAllocate<TYPE>(len);                 \
-    }                                                   \
-                                                        \
-    void ID##MetaType::Free(void* ptr, usize len) const \
-    {                                                   \
-        MetaFree<TYPE>(ptr, len);                       \
-    }                                                   \
-                                                        \
+#define META_DEFINE_SCALAR_TYPE(TYPE, ID)                                               \
+    usize ID##MetaType::SizeOf() const                                                  \
+    {                                                                                   \
+        return sizeof(TYPE);                                                            \
+    }                                                                                   \
+                                                                                        \
+    usize ID##MetaType::AlignOf() const                                                 \
+    {                                                                                   \
+        return alignof(TYPE);                                                           \
+    }                                                                                   \
+                                                                                        \
+    void* ID##MetaType::Allocate(usize len) const                                       \
+    {                                                                                   \
+        return MetaAllocate<TYPE>(len);                                                 \
+    }                                                                                   \
+                                                                                        \
+    void ID##MetaType::Free(void* ptr, usize len) const                                 \
+    {                                                                                   \
+        MetaFree<TYPE>(ptr, len);                                                       \
+    }                                                                                   \
+                                                                                        \
+    VIRTUAL_META_DEFINE_CHILD(IR_STRINGIFY(ID##MetaType), ID##MetaType, ScalarMetaType) \
+    {}                                                                                  \
+                                                                                        \
     const ID##MetaType ID##MetaType##Inst;
 
     META_DEFINE_SCALAR_TYPE(bool, Bool);

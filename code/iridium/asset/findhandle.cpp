@@ -6,14 +6,11 @@ namespace Iridium
     {
         Vec<String> result;
 
-        if (this)
+        for (FolderEntry entry; Next(entry);)
         {
-            for (FolderEntry entry; Next(entry);)
+            if (!entry.IsFolder)
             {
-                if (!entry.IsFolder)
-                {
-                    result.emplace_back(std::move(entry.Name));
-                }
+                result.emplace_back(std::move(entry.Name));
             }
         }
 

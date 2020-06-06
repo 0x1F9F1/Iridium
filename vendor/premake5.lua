@@ -81,6 +81,7 @@ project "wolfssl"
     kind "StaticLib"
     language "C"
     cdialect "C99"
+    warnings "Off"
 
     files
     {

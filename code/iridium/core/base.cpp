@@ -4,9 +4,9 @@
 
 namespace Iridium
 {
-    bool Base::IsA(const MetaClass* parent) const
+    bool Base::IsA(const MetaClass* target) const
     {
-        return GetClass()->IsA(parent);
+        return GetClass()->IsA(target);
     }
 
     VIRTUAL_META_DEFINE("Base", Base)

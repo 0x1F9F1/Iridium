@@ -31,7 +31,10 @@ workspace "Iridium"
         architecture "x86_64"
 
     filter "toolset:msc*"
-        buildoptions { "/permissive-", "/Zc:throwingNew" }
+        buildoptions { "/permissive-" }
+
+    filter "toolset:msc-v*"
+        buildoptions { "/Zc:throwingNew" }
 
     filter {}
 

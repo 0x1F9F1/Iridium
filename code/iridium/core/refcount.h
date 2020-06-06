@@ -235,7 +235,7 @@ namespace Iridium
             return ptr_;
         }
 
-        IR_FORCEINLINE [[nodiscard]] T* release() noexcept
+        [[nodiscard]] IR_FORCEINLINE T* release() noexcept
         {
             T* ptr = ptr_;
             ptr_ = nullptr;
@@ -291,7 +291,7 @@ namespace Iridium
 
         IR_FORCEINLINE ~StaticRc()
         {
-            ref_.release();
+            static_cast<void>(ref_.release());
         };
 
         IR_FORCEINLINE operator const Rc<T> &() noexcept
