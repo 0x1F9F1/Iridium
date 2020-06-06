@@ -16,7 +16,7 @@ namespace Iridium
         template <typename T>
         bool IsA() const
         {
-            return IsA(GetMetaClass<T>());
+            return IsA(MetaClassStore<T>::Get());
         }
 
         META_DECLARE;

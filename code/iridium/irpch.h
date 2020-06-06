@@ -23,6 +23,4 @@
 #include "core/base.h"
 #include "core/meta/metadeclare.h"
 
-#include "core/meta/metabuiltin.h"
-
 #include "core/refcount.h"

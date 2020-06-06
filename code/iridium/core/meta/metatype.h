@@ -60,15 +60,6 @@ namespace Iridium
     {
         return (info && info->IsA(T::s_MetaId)) ? static_cast<const T*>(info) : nullptr;
     }
-
-    template <typename T, typename = void>
-    struct MetaTypeFactory;
-
-    template <typename T>
-    IR_FORCEINLINE const MetaType* GetMetaType()
-    {
-        return MetaTypeFactory<std::remove_cv_t<T>>::Create();
-    }
 } // namespace Iridium
 
 #define META_TYPE_REFLECT_DERIVED(ID, TYPE)                                   \
