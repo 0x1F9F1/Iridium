@@ -26,23 +26,20 @@ namespace Iridium
     {
         if (buffer_read_ != 0)
         {
-            if (position_.valid() && whence != SeekWhence::End)
+            i64 rel_offset = offset;
+
+            switch (whence) // Calculate the offset relative to the start of the buffer
             {
-                i64 rel_offset = offset;
+                case SeekWhence::End: rel_offset += handle_->Size().get(); [[fallthrough]];
+                case SeekWhence::Set: rel_offset -= position_.get(); break;
+                case SeekWhence::Cur: rel_offset += buffer_head_; break;
+            }
 
-                switch (whence) // Calculate the offset relative to the start of the buffer
-                {
-                    case SeekWhence::Set: rel_offset -= position_.get(); break;
-                    case SeekWhence::Cur: rel_offset += buffer_head_; break;
-                    default: rel_offset = -1;
-                }
+            if (rel_offset >= 0 && rel_offset <= buffer_read_)
+            {
+                buffer_head_ = static_cast<u32>(rel_offset);
 
-                if (rel_offset >= 0 && rel_offset <= buffer_read_)
-                {
-                    buffer_head_ = static_cast<u32>(rel_offset);
-
-                    return position_ + buffer_head_;
-                }
+                return position_ + static_cast<u64>(buffer_head_);
             }
 
             if (whence == SeekWhence::Cur)
@@ -84,7 +81,7 @@ namespace Iridium
                 total += buffered;
             }
 
-            position_ += buffer_head_;
+            position_ += static_cast<u64>(buffer_head_);
 
             if (len >= buffer_capacity_)
             {
@@ -117,9 +114,7 @@ namespace Iridium
 
     usize BufferedStream::Write(const void* ptr, usize len)
     {
-        IrDebugAssert(position_.valid(), "Cannot read from unknown position");
-
-        if (!FlushReads())
+        if (!position_.valid() || !FlushReads())
         {
             return 0;
         }

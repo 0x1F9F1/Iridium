@@ -72,7 +72,21 @@ namespace Iridium
         return result;
     }
 
+    IR_FORCEINLINE constexpr StreamPosition operator+(StreamPosition const lhs, u64 rhs) noexcept
+    {
+        StreamPosition result = lhs;
+        result.value += (result.value < 0) ? 0 : rhs;
+        return result;
+    }
+
     IR_FORCEINLINE constexpr StreamPosition& operator+=(StreamPosition& lhs, i64 rhs) noexcept
+    {
+        lhs = lhs + rhs;
+
+        return lhs;
+    }
+
+    IR_FORCEINLINE constexpr StreamPosition& operator+=(StreamPosition& lhs, u64 rhs) noexcept
     {
         lhs = lhs + rhs;
 

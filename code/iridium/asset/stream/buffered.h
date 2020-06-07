@@ -48,6 +48,7 @@ namespace Iridium
         Ptr<u8[]> buffer_ {nullptr};
 
         // Cached file position, (position_ + buffer_read_ == RawTell())
+        // Assumed to always be valid if there is buffered data
         StreamPosition position_ {};
 
         // Maximum capacity of the buffer
@@ -62,7 +63,7 @@ namespace Iridium
 
     inline StreamPosition BufferedStream::Tell()
     {
-        return position_ + buffer_head_;
+        return position_ + static_cast<u64>(buffer_head_);
     }
 
     inline i32 BufferedStream::GetCh()
