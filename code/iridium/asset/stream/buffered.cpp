@@ -90,7 +90,7 @@ namespace Iridium
                 buffer_head_ = 0;
                 buffer_read_ = 0;
 
-                position_ += raw_read;
+                position_ += u64(raw_read);
                 total += raw_read;
 
                 return total;
@@ -135,7 +135,7 @@ namespace Iridium
 
                 usize const written = handle_->Write(&buffer_[0], buffer_capacity_);
 
-                position_ += written;
+                position_ += u64(written);
                 buffer_head_ = 0;
 
                 if (written != buffer_capacity_)
@@ -156,7 +156,7 @@ namespace Iridium
         {
             usize const written = handle_->Write(ptr, len);
 
-            position_ += written;
+            position_ += u64(written);
 
             return written;
         }
@@ -256,7 +256,7 @@ namespace Iridium
 
         bool success = written == buffer_head_;
 
-        position_ += written;
+        position_ += u64(written);
         buffer_head_ = 0;
 
         return success;

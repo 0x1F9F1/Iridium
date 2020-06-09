@@ -35,7 +35,7 @@ namespace Iridium
 
         usize result = input_->ReadBulk(ptr, len, here_.get());
 
-        here_ += result;
+        here_ += u64(result);
 
         return result;
     }
