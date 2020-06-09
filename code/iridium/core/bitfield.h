@@ -79,7 +79,7 @@ namespace Iridium
 
         IR_FORCEINLINE bit_field& operator=(Type value)
         {
-            value_ ^= (value_ ^ (T(value) << Index)) & Mask;
+            value_ ^= (value_ ^ (T(value) << Index)) & ShiftedMask;
 
             return *this;
         }
