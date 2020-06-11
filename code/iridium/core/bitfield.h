@@ -9,6 +9,12 @@ namespace Iridium
     };
 
     template <>
+    struct smallest_int_for_bits_<1>
+    {
+        using type = bool;
+    };
+
+    template <>
     struct smallest_int_for_bits_<8>
     {
         using type = u8;
@@ -34,22 +40,31 @@ namespace Iridium
 
     template <usize Bits>
     struct smallest_int_for_bits
-        : smallest_int_for_bits_<
-              (Bits == 0) ? 0 : (Bits <= 8) ? 8 : (Bits <= 16) ? 16 : (Bits <= 32) ? 32 : (Bits <= 64) ? 64 : 0>
+        : smallest_int_for_bits_<(Bits == 0)
+                  ? 0
+                  : (Bits == 1) ? 1 : (Bits <= 8) ? 8 : (Bits <= 16) ? 16 : (Bits <= 32) ? 32 : (Bits <= 64) ? 64 : 0>
     {};
 
-    template <typename T, usize Index, usize Bits>
+    template <typename T, usize Index, usize Bits = 1, typename Type = typename smallest_int_for_bits<Bits>::type>
     class bit_field
     {
     public:
         static constexpr T Mask = (T(1) << Bits) - 1;
         static constexpr T ShiftedMask = Mask << Index;
 
-        using Type = typename smallest_int_for_bits<Bits>::type;
+        IR_FORCEINLINE bit_field() = delete;
+        IR_FORCEINLINE bit_field(const bit_field&) = delete;
+
+        IR_FORCEINLINE bit_field& operator=(const bit_field& rhs)
+        {
+            value_ = (value_ & ~ShiftedMask) | (rhs.value_ & ShiftedMask);
+
+            return *this;
+        }
 
         IR_FORCEINLINE bit_field& operator=(Type value)
         {
-            value_ ^= (value_ ^ (static_cast<T>(value) << Index)) & ShiftedMask;
+            value_ = (value_ & ~ShiftedMask) | ((value << Index) & ShiftedMask);
 
             return *this;
         }
@@ -69,17 +84,26 @@ namespace Iridium
     };
 
     template <typename T, usize Index>
-    class bit_field<T, Index, 1>
+    class bit_field<T, Index, 1, bool>
     {
     public:
-        static constexpr T Mask = 1;
-        static constexpr T ShiftedMask = Mask << Index;
+        static constexpr T ShiftedMask = T(1) << Index;
 
         using Type = bool;
 
+        IR_FORCEINLINE bit_field() = delete;
+        IR_FORCEINLINE bit_field(const bit_field&) = delete;
+
+        IR_FORCEINLINE bit_field& operator=(const bit_field& rhs)
+        {
+            value_ = (value_ & ~ShiftedMask) | (rhs.value_ & ShiftedMask);
+
+            return *this;
+        }
+
         IR_FORCEINLINE bit_field& operator=(Type value)
         {
-            value_ ^= (value_ ^ (T(value) << Index)) & ShiftedMask;
+            value_ = (value_ & ~ShiftedMask) | (T(value) << Index);
 
             return *this;
         }
