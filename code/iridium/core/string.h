@@ -13,14 +13,6 @@ namespace Iridium
     bool StartsWith(StringView haystack, StringView needle);
     bool EndsWith(StringView haystack, StringView needle);
 
-    bool PathCompareEqual(StringView lhs, StringView rhs);
-    bool PathCompareLess(StringView lhs, StringView rhs);
-
-    bool PathCompareLess(const char* lhs, const char* rhs);
-
-    void PathNormalizeSlash(String& path);
-    void PathNormalizeSlash(char* path);
-
     template <typename... Args>
     IR_FORCEINLINE String Concat(const Args&... args)
     {
@@ -29,14 +21,48 @@ namespace Iridium
 
     IR_FORCEINLINE constexpr char ToLower(char v) noexcept
     {
-        return (v >= 'A' && v <= 'Z') ? (v + ('a' - 'A')) : v;
+        return v + ((static_cast<unsigned char>(v - 'A') < 26) ? 0x20 : 0);
     }
 
-    IR_FORCEINLINE constexpr bool CharEqualI(char lhs, char rhs) noexcept
+    IR_FORCEINLINE bool StringCompareIEqual(StringView lhs, StringView rhs) noexcept
     {
-        const char x = rhs ^ lhs;
+        usize const len = lhs.size();
 
-        return (x == 0) || ((x == 0x20) && (static_cast<unsigned char>((lhs | 0x20) - 0x61) < 26));
+        if (len != rhs.size())
+            return false;
+
+        const char* const lhs_raw = lhs.data();
+        const char* const rhs_raw = rhs.data();
+
+        for (usize i = 0; i != len; ++i)
+        {
+            if (ToLower(lhs_raw[i]) != ToLower(rhs_raw[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    IR_FORCEINLINE bool StringCompareILess(StringView lhs, StringView rhs) noexcept
+    {
+        usize const lhs_len = lhs.size();
+        usize const rhs_len = rhs.size();
+
+        const char* const lhs_raw = lhs.data();
+        const char* const rhs_raw = rhs.data();
+
+        usize const len = lhs_len < rhs_len ? lhs_len : rhs_len;
+
+        for (usize i = 0; i != len; ++i)
+        {
+            u8 const l = ToLower(lhs_raw[i]);
+            u8 const r = ToLower(rhs_raw[i]);
+
+            if (l != r)
+                return l < r;
+        }
+
+        return lhs_len < rhs_len;
     }
 
     extern const u8 NormalizeCaseAndSlash[256];

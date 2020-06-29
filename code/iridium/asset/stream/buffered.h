@@ -7,7 +7,7 @@ namespace Iridium
     class BufferedStream final : public Stream
     {
     public:
-        BufferedStream(Rc<Stream> handle);
+        BufferedStream(Rc<Stream> handle, usize capacity = 4096);
         ~BufferedStream() override;
 
         StreamPosition Seek(i64 offset, SeekWhence whence) override;

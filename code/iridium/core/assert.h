@@ -39,10 +39,10 @@ namespace Iridium
         }                                                                                       \
     } while (false)
 
-#define IrEnabledCheck(CONDITION, MESSAGE)               \
-    (IR_LIKELY((CONDITION)) ? void()                     \
-                            : (::Iridium::IrReportCheck( \
-                                  ::Iridium::IrCheckData {MESSAGE, IR_FILE, static_cast<unsigned int>(IR_LINE)})))
+#define IrEnabledCheck(CONDITION, MESSAGE) \
+    (IR_LIKELY((CONDITION))                \
+            ? void()                       \
+            : ::Iridium::IrReportCheck(::Iridium::IrCheckData {MESSAGE, IR_FILE, static_cast<unsigned int>(IR_LINE)}))
 
 #define IrDisabledAssert(CONDITION, MESSAGE) void(sizeof(!(CONDITION)))
 

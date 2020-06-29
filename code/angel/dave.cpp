@@ -1,59 +1,88 @@
 #include "dave.h"
 
-#include "core/bits.h"
-
+#include "asset/path.h"
 #include "asset/stream.h"
 #include "asset/stream/decode.h"
 #include "asset/stream/encode.h"
 #include "asset/stream/partial.h"
 #include "asset/transform/deflate.h"
+#include "core/bits.h"
 
 namespace Iridium::Angel
 {
-    static void ReadDaveString(const Vec<char>& names, usize offset, String& output)
+    struct DaveHeader
+    {
+        u32 Magic;
+        u32 FileCount;
+        u32 NamesOffset;
+        u32 NamesSize;
+    };
+
+    static_assert(sizeof(DaveHeader) == 0x10);
+
+    struct DaveEntry
+    {
+        u32 NameOffset;
+        u32 DataOffset;
+        u32 Size;
+        u32 RawSize;
+
+        u32 GetNameOffset() const
+        {
+            return NameOffset;
+        }
+
+        u32 GetOnDiskSize() const
+        {
+            return RawSize;
+        }
+
+        u32 GetOffset() const
+        {
+            return DataOffset;
+        }
+
+        u32 GetSize() const
+        {
+            return Size;
+        }
+    };
+
+    static_assert(sizeof(DaveEntry) == 0x10);
+
+    static void ReadDaveString(const char* names, String& output)
     {
         // Modified base-64, using only 48 characters
         static constexpr char DaveStringCharSet[48 + 16 + 1] {
             "\0 #$()-./?0123456789_abcdefghijklmnopqrstuvwxyz~________________"};
 
-        u32 bit_index = 0;
-        u8 first = u8(names.at(offset));
+        const unsigned char* name_data = reinterpret_cast<const unsigned char*>(names);
 
-        if ((first & 0x3F) < 0x38)
+        u32 bit_index = 0;
+
+        if (u8 first = name_data[0]; (first & 0x3F) < 0x38)
         {
             output.clear();
         }
         else
         {
-            u8 second = u8(names.at(offset + 1));
-            u8 index = (first & 0x7) | ((first & 0xC0) >> 3) | ((second & 0x7) << 5);
+            u8 index = (first & 0x7) | ((first & 0xC0) >> 3) | ((name_data[1]) << 5);
             output.resize(index);
             bit_index = 12;
         }
 
         while (true)
         {
-            usize here = offset + (bit_index >> 3);
+            usize here = bit_index >> 3;
 
             u8 bits = 0;
 
             switch (bit_index & 0x7)
             {
-                case 0: // Next: 6
-                    bits = u8(names.at(here) & 0x3F);
-                    break;
-
-                case 2: // Next: 0
-                    bits = u8(names.at(here)) >> 2;
-                    break;
-
-                case 4: // Next: 2
-                    bits = (u8(names.at(here)) >> 4) | (u8(names.at(here + 1) & 0x3) << 4);
-                    break;
-
-                case 6: // Next: 4
-                    bits = (u8(names.at(here)) >> 6) | (u8(names.at(here + 1) & 0xF) << 2);
-                    break;
+                case 0 /*next: 6*/: bits = name_data[here] & 0x3F; break;
+                case 2 /*next: 0*/: bits = name_data[here] >> 2; break;
+                case 4 /*next: 2*/: bits = (name_data[here] >> 4) | ((name_data[here + 1] & 0x3) << 4); break;
+                case 6 /*next: 4*/: bits = (name_data[here] >> 6) | ((name_data[here + 1] & 0xF) << 2); break;
             }
 
             bit_index += 6;
@@ -61,8 +90,8 @@ namespace Iridium::Angel
             if (bits == 0)
                 break;
 
-            output += DaveStringCharSet[bits];
-        };
+            output.push_back(DaveStringCharSet[bits]);
+        }
     }
 
     static void WriteDaveString(Vec<char>& names, StringView name, StringView prev)
@@ -161,26 +190,36 @@ namespace Iridium::Angel
         IrAssert(RefreshFileList(), "Invalid Archive");
     }
 
-    Rc<Stream> DaveArchive::Open(StringView path, bool read_only)
+    struct DaveFileNode final : VFS::FixedFileNode<DaveEntry>
     {
-        return vfs_.Open(path, read_only, [this](StringView path, DaveEntry& entry) { return OpenEntry(path, entry); });
-    }
+        using FixedFileNode::FixedFileNode;
 
-    Rc<Stream> DaveArchive::Create(StringView path, bool /*write_only*/, bool truncate)
-    {
-        return vfs_.Create(
-            path, truncate, [this](StringView path, DaveEntry& entry) { return OpenEntry(path, entry); });
-    }
+        Rc<Stream> Open(void* ctx, bool /*read_only*/) override
+        {
+            const Rc<Stream>& input = static_cast<DaveArchive*>(ctx)->GetInput();
 
-    bool DaveArchive::Exists(StringView path)
-    {
-        return vfs_.Exists(path);
-    }
+            u32 mem_size = Entry.GetSize();
+            u32 disk_size = Entry.GetOnDiskSize();
+            u32 offset = Entry.GetOffset();
 
-    Ptr<FindFileHandle> DaveArchive::Find(StringView path)
-    {
-        return vfs_.Find(path, [](const DaveEntry& entry, FolderEntry& output) { output.Size = entry.GetSize(); });
-    }
+            if (mem_size != disk_size)
+            {
+                return MakeRc<DecodeStream>(
+                    MakeRc<PartialStream>(offset, disk_size, input), MakeUnique<InflateTransform>(), mem_size);
+            }
+            else
+            {
+                return MakeRc<PartialStream>(offset, mem_size, input);
+            }
+        }
+
+        bool Stat(void* /*ctx*/, FolderEntry& entry) override
+        {
+            entry.Size = Entry.GetSize();
+
+            return true;
+        }
+    };
 
     bool DaveArchive::RefreshFileList()
     {
@@ -192,7 +231,7 @@ namespace Iridium::Angel
         if (header.Magic != 0x45564144 && header.Magic != 0x65766144)
             return false; // TODO: Handle "locked" .ar (zip) files
 
-        bool packed_names = header.Magic == 0x65766144;
+        bool const packed_names = header.Magic == 0x65766144;
 
         Vec<DaveEntry> entries(header.FileCount);
 
@@ -204,48 +243,37 @@ namespace Iridium::Angel
         if (!input_->TryReadBulk(names.data(), names.size(), 2048 + header.NamesOffset))
             return false;
 
-        if (names.back() != '\0')
+        if (names.empty() || names.back() != '\0')
             names.emplace_back('\0');
 
         vfs_.Reserve(entries.size());
+        vfs_.FileContext = this;
 
         String name;
         name.reserve(128);
 
         for (const DaveEntry& entry : entries)
         {
+            if (entry.NameOffset >= names.size())
+                return false;
+
+            const char* name_data = &names.at(entry.NameOffset);
+
             if (packed_names)
             {
-                ReadDaveString(names, entry.NameOffset, name);
+                ReadDaveString(name_data, name);
             }
             else
             {
-                name = &names.at(entry.NameOffset);
+                name = name_data;
+
+                PathNormalizeSlash(name);
             }
 
-            PathNormalizeSlash(name);
-
-            vfs_.AddFile(name, entry);
+            vfs_.AddFile<DaveFileNode>(name, entry);
         }
 
         return true;
-    }
-
-    Rc<Stream> DaveArchive::OpenEntry(StringView /*path*/, DaveEntry& entry)
-    {
-        u32 mem_size = entry.GetSize();
-        u32 disk_size = entry.GetOnDiskSize();
-        u32 offset = entry.GetOffset();
-
-        if (mem_size != disk_size)
-        {
-            return MakeRc<DecodeStream>(
-                MakeRc<PartialStream>(offset, disk_size, input_), MakeUnique<InflateTransform>(), mem_size);
-        }
-        else
-        {
-            return MakeRc<PartialStream>(offset, mem_size, input_);
-        }
     }
 
     void DaveArchive::Save(
@@ -254,7 +282,7 @@ namespace Iridium::Angel
         // Data alignment is 0x800 (CD sector size) in original archives
         // Can be smaller for most archives, but MC2 (and maybe others) requires 0x800 alignment when paging files
 
-        std::sort(files.begin(), files.end(), [](StringView lhs, StringView rhs) { return PathCompareLess(lhs, rhs); });
+        std::sort(files.begin(), files.end(), PathCompareLess);
 
         u32 const file_count = static_cast<u32>(files.size());
 

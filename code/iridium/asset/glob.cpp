@@ -90,7 +90,7 @@ namespace Iridium
                         // FALLTHROUGH
                     default:
                         // match the current non-NUL character
-                        if (!CharEqualI(text[i], glob[j]))
+                        if (ToLower(text[i]) != ToLower(glob[j]))
                             break;
 
                         i++;

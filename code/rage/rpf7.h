@@ -1,7 +1,7 @@
 #pragma once
 
 #include "asset/filedevice.h"
-#include "asset/vfs.h"
+#include "asset/old_vfs.h"
 
 namespace Iridium
 {

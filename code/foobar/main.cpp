@@ -12,52 +12,82 @@ public:
     StringView GetName() override;
 };
 
-struct FooBar : AtomicRefCounted
-{
-    VIRTUAL_META_DECLARE;
+#include <chrono>
 
-    i32 foo = 0;
-    i32 bar = 1;
-    struct Frob* frob = nullptr;
+class ProfilingTimer
+{
+public:
+    ProfilingTimer(StringView name);
+    ~ProfilingTimer();
+
+    void Stop();
+
+private:
+    using Clock = std::chrono::high_resolution_clock;
+    using Timepoint = Clock::time_point;
+
+    String name_ {};
+    Timepoint start_ {};
+    bool done_ {false};
 };
 
-VIRTUAL_META_DEFINE_CHILD("FooBar", FooBar, AtomicRefCounted)
+ProfilingTimer::ProfilingTimer(StringView name)
+    : name_(name)
+    , start_(Clock::now())
+{}
+
+ProfilingTimer::~ProfilingTimer()
 {
-    META_FIELD("foo", foo);
-    META_FIELD("bar", bar);
-    META_FIELD("frob", frob);
+    if (!done_)
+    {
+        Stop();
+    }
 }
 
-struct Frobber
+void ProfilingTimer::Stop()
 {
-    int frobber;
+    Timepoint end = Clock::now();
 
-    META_DECLARE;
-};
+    fmt::print("{} took {} us\n", name_, std::chrono::duration_cast<std::chrono::microseconds>(end - start_).count());
 
-META_DEFINE("Frobber", Frobber)
-{}
+    done_ = true;
+}
 
-struct Frob
-    : AtomicRefCounted
-    , Frobber
-{
-    VIRTUAL_META_DECLARE;
-};
+#include "asset/local.h"
+#include "asset/stream.h"
 
-VIRTUAL_META_DEFINE_CHILD("Frob", Frob, AtomicRefCounted)
-{}
+#include "asset/device/zip.h"
+
+#include "asset/glob.h"
 
 int FooBarApplication::Run(int, char**)
 {
-    FooBar f;
+    Rc<FileDevice> archive;
 
-    fmt::print("{}, {}, {}\n", f.IsA<FooBar>(), f.IsA<Base>(), f.IsA<Frob>());
+    if (Rc<Stream> input = LocalFiles()->Open("C:/Users/Sam/Downloads/boost_1_71_0.zip", true))
+    {
+        for (usize i = 0; i < 10; ++i)
+        {
+            ProfilingTimer _("Load");
 
-    auto a = f.GetClass()->GetField("frob")->Type->GetClass()->GetField("TargetType")->Type;
-    auto b = GetMetaType<const MetaType*>();
+            archive = nullptr;
 
-    fmt::print("{}, {}, {}\n", static_cast<const void*>(a), static_cast<const void*>(b), a == b);
+            archive = MakeRc<ZipArchive>(input);
+        }
+    }
+
+    if (false)
+    {
+        ProfilingTimer _("Glob");
+
+        if (auto files = Glob(archive, "", "**"))
+        {
+            for (const auto& file : *files)
+            {
+                fmt::print("{}\n", file.Name);
+            }
+        }
+    }
 
     return 0;
 }

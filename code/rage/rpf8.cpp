@@ -275,12 +275,12 @@ namespace Iridium::Rage
 
     StreamPosition RageStridedStream::Tell()
     {
-        return StreamPosition::Checked(cipher_->Context.Offset);
+        return cipher_->Context.Offset;
     }
 
     StreamPosition RageStridedStream::Size()
     {
-        return StreamPosition::Checked(cipher_->Context.Length);
+        return cipher_->Context.Length;
     }
 
     usize RageStridedStream::Read(void* ptr, usize len)

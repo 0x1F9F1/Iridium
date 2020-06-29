@@ -1,4 +1,4 @@
-#include "vfsbase.h"
+#include "old_vfsbase.h"
 
 #include "findhandle.h"
 #include "stream.h"

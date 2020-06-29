@@ -11,7 +11,8 @@
 #include "core/joaat.h"
 
 #include "crypto/aes.h"
-#include "crypto/tfit.h"
+
+#include "tfit.h"
 
 #include "hashes.h"
 #include "rsc.h"
@@ -125,11 +126,21 @@ namespace Iridium::Rage
         input.Read(RAGE_DEFAULT_AES_KEY, sizeof(RAGE_DEFAULT_AES_KEY));
     }
 
-    static u32 CalculateKeyIndex(StringView path, u64 file_size)
+    static inline StringView BaseName(StringView name)
     {
-        auto [_, file] = SplitPath(path);
+        const char* name_str = name.data();
 
-        return (IdentLiteralHash(file, 0) + u32(file_size)) % 101;
+        usize split = name.size();
+
+        while (split > 0 && name_str[split - 1] != '/')
+            --split;
+
+        return {name_str + split, name.size() - split};
+    }
+
+    static inline u32 CalculateKeyIndex(StringView path, u64 file_size)
+    {
+        return (IdentLiteralHash(BaseName(path), 0) + u32(file_size)) % 101;
     }
 
     PackFile7::PackFile7(Rc<Stream> input, StringView name)

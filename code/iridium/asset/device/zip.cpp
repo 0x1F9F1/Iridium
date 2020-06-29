@@ -1,13 +1,11 @@
 #include "zip.h"
 
+#include "asset/path.h"
 #include "asset/stream.h"
-
 #include "asset/stream/buffered.h"
 #include "asset/stream/decode.h"
 #include "asset/stream/partial.h"
-
 #include "asset/transform/deflate.h"
-
 #include "core/bits.h"
 
 namespace Iridium::Zip
@@ -115,59 +113,14 @@ namespace Iridium
         RefreshFileList();
     }
 
-    ZipArchive::~ZipArchive() = default;
-
-    Rc<Stream> ZipArchive::Open(StringView path, bool read_only)
+    bool ZipArchive::RefreshFileList()
     {
-        return vfs_.Open(
-            path, read_only, [this](StringView path, ZipFileEntry& entry) { return OpenEntry(path, entry); });
-    }
-
-    Rc<Stream> ZipArchive::Create(StringView path, bool /*write_only*/, bool truncate)
-    {
-        return vfs_.Create(
-            path, truncate, [this](StringView path, ZipFileEntry& entry) { return OpenEntry(path, entry); });
-    }
-
-    bool ZipArchive::Exists(StringView path)
-    {
-        return vfs_.Exists(path);
-    }
-
-    Ptr<FindFileHandle> ZipArchive::Find(StringView path)
-    {
-        return vfs_.Find(path, [](const ZipFileEntry& entry, FolderEntry& output) { output.Size = entry.Size; });
-    }
-
-    void ZipArchive::ReserveFiles(usize count)
-    {
-        vfs_.Reserve(count);
-    }
-
-    void ZipArchive::AddFile(StringView name, i64 header_offset, i64 size, i64 raw_size, CompressorId compression)
-    {
-        if (compression == CompressorId::Stored)
-            IrAssert(size == raw_size, "Stored file size and raw size cannot differ");
-
-        vfs_.AddFile(name, ZipFileEntry {-1, size, raw_size, header_offset, compression});
-    }
-
-    void ZipArchive::Finalize()
-    {
-        // vfs_.CompactNames();
-    }
-
-    void ZipArchive::RefreshFileList()
-    {
-        if (ParseCentralDirectory())
-        {
-            Finalize();
-        }
+        return ParseCentralDirectory();
     }
 
     bool ZipArchive::FindEndOfCentralDirectory()
     {
-        u64 const size = input_->Size().get(0);
+        i64 const size = input_->Size().get();
 
         if (size < sizeof(ZIPENDLOCATOR))
             return false;
@@ -274,7 +227,7 @@ namespace Iridium
         if (eocd64.DiskNumber != eocd64.StartDiskNumber)
             return false;
 
-        if (eocd64.DirectoryRecordSize < i64(sizeof(eocd64) - 12))
+        if (eocd64.DirectoryRecordSize + 12 < i64(sizeof(eocd64)))
             return false;
 
         cd_offset_ = eocd64.DirectoryOffset;
@@ -283,6 +236,58 @@ namespace Iridium
 
         return true;
     }
+
+    struct ZipFileEntry
+    {
+        i64 Offset {-1};
+        i64 Size {0};
+        i64 RawSize {0};
+
+        i64 HeaderOffset {0};
+
+        CompressorId Compression {};
+    };
+
+    struct ZipFileNode final : VFS::FixedFileNode<ZipFileEntry>
+    {
+        using FixedFileNode::FixedFileNode;
+
+        Rc<Stream> Open(void* ctx, bool /*read_only*/) override
+        {
+            const Rc<Stream>& input = static_cast<ZipArchive*>(ctx)->GetInput();
+
+            if (Entry.Offset == -1)
+            {
+                ZIPFILERECORD record;
+
+                if (!input->TryReadBulk(&record, sizeof(record), Entry.HeaderOffset))
+                    return nullptr;
+
+                if (record.Signature != 0x04034B50)
+                    return nullptr;
+
+                Entry.Offset = Entry.HeaderOffset + sizeof(record) + record.FileNameLength + record.ExtraFieldLength;
+            }
+
+            switch (Entry.Compression)
+            {
+                case CompressorId::Stored: return MakeRc<PartialStream>(Entry.Offset, Entry.Size, input);
+
+                case CompressorId::Deflate:
+                    return MakeRc<DecodeStream>(MakeRc<PartialStream>(Entry.Offset, Entry.RawSize, input),
+                        MakeUnique<InflateTransform>(), Entry.Size);
+
+                default: return nullptr;
+            }
+        }
+
+        bool Stat(void* /*ctx*/, FolderEntry& entry) override
+        {
+            entry.Size = Entry.Size;
+
+            return true;
+        }
+    };
 
     bool ZipArchive::ParseCentralDirectory()
     {
@@ -294,17 +299,16 @@ namespace Iridium
         if (!stream.TrySeek(cd_offset_))
             return false;
 
-        ReserveFiles(static_cast<usize>(cd_entries_));
+        vfs_.Reserve(cd_entries_);
 
         String entry_name;
-
         entry_name.reserve(128);
 
         while (true)
         {
             ZIPDIRENTRY entry;
 
-            if (stream.Read(&entry, sizeof(entry)) != sizeof(entry))
+            if (!stream.TryRead(&entry, sizeof(entry)))
                 break;
 
             if (entry.Signature != 0x02014B50)
@@ -324,8 +328,9 @@ namespace Iridium
                 {
                     PathNormalizeSlash(entry_name);
 
-                    AddFile(entry_name, entry.HeaderOffset, entry.UncompressedSize, entry.CompressedSize,
-                        (entry.Compression == 8) ? CompressorId::Deflate : CompressorId::Stored);
+                    vfs_.AddFile<ZipFileNode>(entry_name,
+                        ZipFileEntry {-1, entry.UncompressedSize, entry.CompressedSize, entry.HeaderOffset,
+                            (entry.Compression == 8) ? CompressorId::Deflate : CompressorId::Stored});
                 }
             }
 
@@ -334,33 +339,4 @@ namespace Iridium
 
         return true;
     }
-
-    Rc<Stream> ZipArchive::OpenEntry(StringView /*path*/, ZipFileEntry& entry)
-    {
-        if (entry.Offset == -1)
-        {
-            ZIPFILERECORD record;
-
-            if (!input_->TryReadBulk(&record, sizeof(record), entry.HeaderOffset))
-                return nullptr;
-
-            if (record.Signature != 0x04034B50)
-                return nullptr;
-
-            entry.Offset = entry.HeaderOffset + sizeof(record) + record.FileNameLength + record.ExtraFieldLength;
-        }
-
-        switch (entry.Compression)
-        {
-            case CompressorId::Stored: return MakeRc<PartialStream>(entry.Offset, entry.Size, input_);
-
-            case CompressorId::Deflate:
-                return MakeRc<DecodeStream>(MakeRc<PartialStream>(entry.Offset, entry.RawSize, input_),
-                    MakeUnique<InflateTransform>(), entry.Size);
-
-            default: return nullptr;
-        }
-    }
-
-    template class VirtualFileSystem<ZipArchive::ZipFileEntry>;
 } // namespace Iridium

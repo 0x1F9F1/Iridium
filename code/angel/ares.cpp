@@ -9,33 +9,213 @@
 
 namespace Iridium::Angel
 {
+    struct AresHeader
+    {
+        u32 Magic;
+        u32 FileCount;
+        u32 RootCount;
+        u32 NamesSize;
+    };
+
+    static_assert(sizeof(AresHeader) == 0x10);
+
+    struct VirtualFileINode
+    {
+        u32 dword0;
+        u32 dword4;
+        u32 dword8;
+
+        u32 GetOffset() const
+        {
+            return dword0;
+        }
+
+        u32 GetSize() const
+        {
+            return dword4 & 0x7FFFFF;
+        }
+
+        u32 GetEntryIndex() const
+        {
+            return dword0;
+        }
+
+        u32 GetEntryCount() const
+        {
+            return dword4 & 0x7FFFFF;
+        }
+
+        bool IsDirectory() const
+        {
+            return (dword8 & 1) != 0;
+        }
+
+        u32 GetNameOffset() const
+        {
+            return (dword8 >> 14) & 0x3FFFF;
+        }
+
+        u32 GetExtOffset() const
+        {
+            return (dword4 >> 23) & 0x1FF;
+        }
+
+        u32 GetNameInteger() const
+        {
+            return (dword8 >> 1) & 0x1FFF;
+        }
+
+        void SetOffset(u32 offset)
+        {
+            dword0 = offset;
+        }
+
+        void SetSize(u32 size)
+        {
+            dword4 = (dword4 & 0xFF800000) | (size);
+        }
+
+        void SetEntryIndex(u32 index)
+        {
+            dword0 = index;
+        }
+
+        void SetEntryCount(u32 size)
+        {
+            dword4 = (dword4 & 0xFF800000) | (size);
+        }
+
+        void SetIsDirectory(bool is_dir)
+        {
+            dword8 = (dword8 & 0xFFFFFFFE) | u32(is_dir);
+        }
+
+        void SetNameOffset(u32 offset)
+        {
+            dword8 = (dword8 & 0x00003FFF) | (offset << 14);
+        }
+
+        void SetExtOffset(u32 offset)
+        {
+            dword4 = (dword4 & 0x007FFFFF) | (offset << 23);
+        }
+
+        void SetNameInteger(u32 value)
+        {
+            dword8 = (dword8 & 0xFFFFC001) | (value << 1);
+        }
+    };
+
+    static_assert(sizeof(VirtualFileINode) == 0xC);
+
     AresArchive::AresArchive(Rc<Stream> input)
         : input_(std::move(input))
     {
         IrAssert(RefreshFileList(), "Invalid Archive");
     }
 
-    Rc<Stream> AresArchive::Open(StringView path, bool read_only)
+    bool AresArchive::RefreshFileList()
     {
-        return vfs_.Open(
-            path, read_only, [this](StringView path, VirtualFileINode& entry) { return OpenEntry(path, entry); });
+        if (!input_->TrySeek(0))
+            return false;
+
+        AresHeader header {};
+
+        if (!input_->TryRead(&header, sizeof(header)))
+            return false;
+
+        if (header.Magic != 0x53455241)
+            return false;
+
+        Vec<VirtualFileINode> nodes(header.FileCount);
+
+        if (!input_->TryRead(nodes.data(), nodes.size() * sizeof(VirtualFileINode)))
+            return false;
+
+        Vec<char> names(header.NamesSize);
+
+        if (!input_->TryRead(names.data(), names.size()))
+            return false;
+
+        if (names.empty() || names.back() != '\0')
+            names.emplace_back('\0');
+
+        vfs_.Reserve(header.FileCount);
+        vfs_.FileContext = this;
+
+        String path;
+        path.reserve(128);
+
+        for (u32 i = 0; i < header.RootCount; ++i)
+            AddFileNode(nodes, names, i, path);
+
+        return true;
     }
 
-    Rc<Stream> AresArchive::Create(StringView path, bool /*write_only*/, bool truncate)
+    struct AresFileNode final : VFS::FixedFileNode<VirtualFileINode>
     {
-        return vfs_.Create(
-            path, truncate, [this](StringView path, VirtualFileINode& entry) { return OpenEntry(path, entry); });
-    }
+        using FixedFileNode::FixedFileNode;
 
-    bool AresArchive::Exists(StringView path)
-    {
-        return vfs_.Exists(path);
-    }
+        Rc<Stream> Open(void* ctx, bool /*read_only*/) override
+        {
+            const Rc<Stream>& input = static_cast<AresArchive*>(ctx)->GetInput();
 
-    Ptr<FindFileHandle> AresArchive::Find(StringView path)
+            return MakeRc<PartialStream>(Entry.GetOffset(), Entry.GetSize(), input);
+        }
+
+        bool Stat(void* /*ctx*/, FolderEntry& entry) override
+        {
+            entry.Size = Entry.GetSize();
+
+            return true;
+        }
+    };
+
+    void AresArchive::AddFileNode(const Vec<VirtualFileINode>& nodes, const Vec<char>& names, u32 index, String& path)
     {
-        return vfs_.Find(
-            path, [](const VirtualFileINode& entry, FolderEntry& output) { output.Size = entry.GetSize(); });
+        usize const old_size = path.size();
+
+        const VirtualFileINode& node = nodes.at(index);
+
+        for (const char* v = &names.at(node.GetNameOffset()); *v; ++v)
+        {
+            if (*v == '\1')
+            {
+                char name_integer[16];
+
+                auto [p, ec] = std::to_chars(name_integer, name_integer + 16, node.GetNameInteger());
+
+                IrDebugAssert(ec == std::errc(), "Failed to stringify integer");
+
+                path.append(name_integer, p - name_integer);
+            }
+            else
+            {
+                path.push_back(*v);
+            }
+        }
+
+        if (u32 ext_offset = node.GetExtOffset(); ext_offset != 0)
+        {
+            path.push_back('.');
+            path += &names.at(ext_offset);
+        }
+
+        if (node.IsDirectory())
+        {
+            path.push_back('/');
+
+            for (u32 i = node.GetEntryIndex(), end = i + node.GetEntryCount(); i < end; ++i)
+            {
+                AddFileNode(nodes, names, i, path);
+            }
+        }
+        else
+        {
+            vfs_.AddFile<AresFileNode>(path, node);
+        }
+
+        path.resize(old_size);
     }
 
     struct PathVisitor
@@ -364,95 +544,4 @@ namespace Iridium::Angel
         output->Write(nodes.data(), nodes.size() * sizeof(VirtualFileINode));
         output->Write(name_heap.data(), name_heap.size());
     } // namespace Iridium::Angel
-
-    bool AresArchive::RefreshFileList()
-    {
-        if (!input_->TrySeek(0))
-            return false;
-
-        AresHeader header {};
-
-        if (!input_->TryRead(&header, sizeof(header)))
-            return false;
-
-        if (header.Magic != 0x53455241)
-            return false;
-
-        Vec<VirtualFileINode> nodes(header.FileCount);
-
-        if (!input_->TryRead(nodes.data(), nodes.size() * sizeof(VirtualFileINode)))
-            return false;
-
-        Vec<char> names(header.NamesSize);
-
-        if (!input_->TryRead(names.data(), names.size()))
-            return false;
-
-        if (names.back() != '\0')
-            names.emplace_back('\0');
-
-        vfs_.Reserve(header.FileCount);
-
-        String path;
-        path.reserve(128);
-
-        for (u32 i = 0; i < header.RootCount; ++i)
-        {
-            AddFileNode(nodes, names, i, path);
-        }
-
-        return true;
-    }
-
-    void AresArchive::AddFileNode(const Vec<VirtualFileINode>& nodes, const Vec<char>& names, u32 index, String& path)
-    {
-        usize const old_size = path.size();
-
-        const VirtualFileINode& node = nodes.at(index);
-
-        for (const char* v = &names.at(node.GetNameOffset()); *v; ++v)
-        {
-            if (*v == '\1')
-            {
-                char name_integer[16];
-
-                auto [p, ec] = std::to_chars(name_integer, name_integer + 16, node.GetNameInteger());
-
-                IrDebugAssert(ec == std::errc(), "Failed to stringify integer");
-
-                path.append(name_integer, p - name_integer);
-            }
-            else
-            {
-                path.push_back(*v);
-            }
-        }
-
-        if (u32 ext_offset = node.GetExtOffset(); ext_offset != 0)
-        {
-            path.push_back('.');
-            path += &names.at(ext_offset);
-        }
-
-        if (node.IsDirectory())
-        {
-            path.push_back('/');
-
-            for (u32 i = node.GetEntryIndex(), end = i + node.GetEntryCount(); i < end; ++i)
-            {
-                AddFileNode(nodes, names, i, path);
-            }
-        }
-        else
-        {
-            vfs_.AddFile(path, node);
-        }
-
-        path.resize(old_size);
-    }
-
-    Rc<Stream> AresArchive::OpenEntry(StringView /*path*/, VirtualFileINode& entry)
-    {
-        return MakeRc<PartialStream>(entry.GetOffset(), entry.GetSize(), input_);
-    }
 } // namespace Iridium::Angel

@@ -4,10 +4,10 @@
 
 namespace Iridium
 {
-    BufferedStream::BufferedStream(Rc<Stream> handle)
+    BufferedStream::BufferedStream(Rc<Stream> handle, usize capacity)
         : handle_(std::move(handle))
     {
-        buffer_capacity_ = 4096;
+        buffer_capacity_ = static_cast<u32>(capacity);
         buffer_.reset(new u8[buffer_capacity_]);
         position_ = handle_->Tell();
     }

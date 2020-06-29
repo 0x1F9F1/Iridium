@@ -136,12 +136,22 @@ namespace Iridium
                 ptr_->Release();
         }
 
+        IR_FORCEINLINE Rc& operator=(std::nullptr_t)
+        {
+            T* old = ptr_;
+            ptr_ = nullptr;
+
+            if (old)
+                old->Release();
+
+            return *this;
+        }
+
         IR_FORCEINLINE Rc& operator=(Rc&& other)
         {
             if (this != &other)
             {
                 T* old = ptr_;
-
                 ptr_ = other.release();
 
                 if (old)
@@ -155,7 +165,6 @@ namespace Iridium
         IR_FORCEINLINE Rc& operator=(Rc<U>&& other)
         {
             T* old = ptr_;
-
             ptr_ = other.release();
 
             if (old)
@@ -167,7 +176,6 @@ namespace Iridium
         IR_FORCEINLINE Rc& operator=(const Rc& other)
         {
             T* old = ptr_;
-
             ptr_ = other.get();
 
             if (old != ptr_)
@@ -186,7 +194,6 @@ namespace Iridium
         IR_FORCEINLINE Rc& operator=(const Rc<U>& other)
         {
             T* old = ptr_;
-
             ptr_ = other.get();
 
             if (old != ptr_)
@@ -201,10 +208,10 @@ namespace Iridium
             return *this;
         }
 
-        IR_FORCEINLINE void reset(std::nullptr_t ptr = nullptr)
+        IR_FORCEINLINE void reset(std::nullptr_t = nullptr)
         {
             T* old = ptr_;
-            ptr_ = ptr;
+            ptr_ = nullptr;
 
             if (old)
                 old->Release();

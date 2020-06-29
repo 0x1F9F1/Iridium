@@ -26,24 +26,24 @@ namespace Iridium
 
     IR_FORCEINLINE bool PathCompareLess(StringView lhs, StringView rhs)
     {
-        usize const l1 = lhs.size();
-        usize const l2 = rhs.size();
+        usize const lhs_len = lhs.size();
+        usize const rhs_len = rhs.size();
 
         const char* const lhs_raw = lhs.data();
         const char* const rhs_raw = rhs.data();
 
-        usize const len = std::min(l1, l2);
+        usize const len = lhs_len < rhs_len ? lhs_len : rhs_len;
 
-        for (usize i = 0; i < len; ++i)
+        for (usize i = 0; i != len; ++i)
         {
-            u8 const i1 = NormalizeCaseAndSlash[static_cast<unsigned char>(lhs_raw[i])];
-            u8 const i2 = NormalizeCaseAndSlash[static_cast<unsigned char>(rhs_raw[i])];
+            u8 const l = NormalizeCaseAndSlash[static_cast<unsigned char>(lhs_raw[i])];
+            u8 const r = NormalizeCaseAndSlash[static_cast<unsigned char>(rhs_raw[i])];
 
-            if (i1 != i2)
-                return i1 < i2;
+            if (l != r)
+                return l < r;
         }
 
-        return l1 < l2;
+        return lhs_len < rhs_len;
     }
 
     IR_FORCEINLINE void PathNormalizeSlash(String& path)
