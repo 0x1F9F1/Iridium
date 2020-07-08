@@ -10,10 +10,9 @@ namespace Iridium
         BufferedStream(Rc<Stream> handle, usize capacity = 4096);
         ~BufferedStream() override;
 
-        StreamPosition Seek(i64 offset, SeekWhence whence) override;
-
-        StreamPosition Tell() override;
-        StreamPosition Size() override;
+        i64 Seek(i64 offset, SeekWhence whence) override;
+        i64 Tell() override;
+        i64 Size() override;
 
         usize Read(void* ptr, usize len) override;
         usize Write(const void* ptr, usize len) override;
@@ -49,7 +48,7 @@ namespace Iridium
 
         // Cached file position, (position_ + buffer_read_ == RawTell())
         // Assumed to always be valid if there is buffered data
-        StreamPosition position_ {};
+        i64 position_ {-1};
 
         // Maximum capacity of the buffer
         u32 buffer_capacity_ {0};
@@ -61,9 +60,9 @@ namespace Iridium
         u32 buffer_read_ {0};
     };
 
-    inline StreamPosition BufferedStream::Tell()
+    inline i64 BufferedStream::Tell()
     {
-        return position_ + static_cast<u64>(buffer_head_);
+        return position_ + buffer_head_;
     }
 
     inline i32 BufferedStream::GetCh()

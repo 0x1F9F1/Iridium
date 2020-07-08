@@ -12,8 +12,8 @@ namespace Iridium
         EncodeStream(Rc<Stream> output, Ptr<BinaryTransform> transform, usize buffer_size = 0x2000);
         ~EncodeStream() override;
 
-        StreamPosition Tell() override;
-        StreamPosition Size() override;
+        i64 Tell() override;
+        i64 Size() override;
 
         usize Write(const void* ptr, usize len) override;
 

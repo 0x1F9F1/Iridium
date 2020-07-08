@@ -17,12 +17,12 @@ namespace Iridium
         Flush();
     }
 
-    StreamPosition EncodeStream::Tell()
+    i64 EncodeStream::Tell()
     {
         return size_;
     }
 
-    StreamPosition EncodeStream::Size()
+    i64 EncodeStream::Size()
     {
         return size_;
     }

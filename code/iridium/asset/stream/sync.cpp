@@ -6,21 +6,21 @@ namespace Iridium
         : input_(std::move(input))
     {}
 
-    StreamPosition SyncStream::Seek(i64 offset, SeekWhence whence)
+    i64 SyncStream::Seek(i64 offset, SeekWhence whence)
     {
         MutexGuard lock(lock_);
 
         return input_->Seek(offset, whence);
     }
 
-    StreamPosition SyncStream::Tell()
+    i64 SyncStream::Tell()
     {
         MutexGuard lock(lock_);
 
         return input_->Tell();
     }
 
-    StreamPosition SyncStream::Size()
+    i64 SyncStream::Size()
     {
         MutexGuard lock(lock_);
 

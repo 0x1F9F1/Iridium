@@ -15,7 +15,7 @@ namespace Iridium
         }
     }
 
-    StreamPosition PartialStream::Seek(i64 offset, SeekWhence whence)
+    i64 PartialStream::Seek(i64 offset, SeekWhence whence)
     {
         switch (whence)
         {
@@ -29,12 +29,12 @@ namespace Iridium
         return here_;
     }
 
-    StreamPosition PartialStream::Tell()
+    i64 PartialStream::Tell()
     {
         return here_;
     }
 
-    StreamPosition PartialStream::Size()
+    i64 PartialStream::Size()
     {
         return size_;
     }

@@ -13,7 +13,7 @@ namespace Iridium
         buffer_.reset(new u8[buffer_size_]);
     }
 
-    StreamPosition DecodeStream::Seek(i64 offset, SeekWhence whence)
+    i64 DecodeStream::Seek(i64 offset, SeekWhence whence)
     {
         switch (whence)
         {
@@ -25,7 +25,7 @@ namespace Iridium
         offset = std::clamp<i64>(offset, 0, size_);
 
         if (offset == current_)
-            return offset;
+            return current_;
 
         if (offset == i64(size_))
         {
@@ -37,10 +37,10 @@ namespace Iridium
         if (offset < current_)
         {
             if (!input_->TrySeek(0))
-                return StreamPosition();
+                return -1;
 
             if (!transform_->Reset())
-                return StreamPosition();
+                return -1;
 
             transform_->NextIn = nullptr;
             transform_->AvailIn = 0;
@@ -71,12 +71,12 @@ namespace Iridium
         return current_;
     }
 
-    StreamPosition DecodeStream::Tell()
+    i64 DecodeStream::Tell()
     {
         return current_;
     }
 
-    StreamPosition DecodeStream::Size()
+    i64 DecodeStream::Size()
     {
         return size_;
     }

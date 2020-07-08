@@ -442,7 +442,7 @@ namespace Iridium
 
     bool VFS::StreamFileNode::Stat(void* /*ctx*/, FolderEntry& entry)
     {
-        entry.Size = Data->Size().get(0);
+        entry.Size = Data->Size();
 
         return true;
     }

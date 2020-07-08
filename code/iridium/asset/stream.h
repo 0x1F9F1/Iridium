@@ -1,7 +1,5 @@
 #pragma once
 
-#include "position.h"
-
 namespace Iridium
 {
     enum class SeekWhence : u8
@@ -18,16 +16,16 @@ namespace Iridium
     public:
         // Sets the current file position
         // Returns the new file position
-        virtual StreamPosition Seek(i64 position, SeekWhence whence);
+        virtual i64 Seek(i64 position, SeekWhence whence);
 
         // Retrieves the current file position
         // Returns the current file position
-        virtual StreamPosition Tell();
+        virtual i64 Tell();
 
         // Retrieves the file size
         // May modify the current file position
         // Returns the file size
-        virtual StreamPosition Size();
+        virtual i64 Size();
 
         // Reads up to len bytes from the current file position
         // Increments the file position by the number of bytes read
@@ -57,7 +55,7 @@ namespace Iridium
         // Sets the file size
         // May modify the current file position
         // Returns the new file size
-        virtual StreamPosition SetSize(u64 length);
+        virtual i64 SetSize(u64 length);
 
         // Copies current stream contents to output
         // Returns number of bytes copied
@@ -89,9 +87,6 @@ namespace Iridium
 
         static Rc<Stream> Temp();
 
-        String ReadText();
-        Vec<u8> ReadBytes();
-
         [[nodiscard]] bool TrySeek(u64 position);
         [[nodiscard]] bool TryRead(void* ptr, usize len);
         [[nodiscard]] bool TryWrite(const void* ptr, usize len);
@@ -103,7 +98,7 @@ namespace Iridium
 
     inline bool Stream::TrySeek(u64 position)
     {
-        return Seek(position, SeekWhence::Set) == position;
+        return Seek(position, SeekWhence::Set) == static_cast<i64>(position);
     }
 
     inline bool Stream::TryRead(void* ptr, usize len)

@@ -9,10 +9,10 @@ namespace Iridium
     public:
         PartialStream(u64 start, u64 size, const Rc<Stream>& handle);
 
-        StreamPosition Seek(i64 offset, SeekWhence whence) override;
+        i64 Seek(i64 offset, SeekWhence whence) override;
 
-        StreamPosition Tell() override;
-        StreamPosition Size() override;
+        i64 Tell() override;
+        i64 Size() override;
 
         usize Read(void* ptr, usize len) override;
         usize ReadBulk(void* ptr, usize len, u64 offset) override;

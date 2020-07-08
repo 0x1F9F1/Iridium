@@ -6,7 +6,7 @@ namespace Iridium
         : input_(std::move(handle))
     {}
 
-    StreamPosition BulkStream::Seek(i64 offset, SeekWhence whence)
+    i64 BulkStream::Seek(i64 offset, SeekWhence whence)
     {
         switch (whence)
         {
@@ -18,24 +18,24 @@ namespace Iridium
         return here_;
     }
 
-    StreamPosition BulkStream::Tell()
+    i64 BulkStream::Tell()
     {
         return here_;
     }
 
-    StreamPosition BulkStream::Size()
+    i64 BulkStream::Size()
     {
         return input_->Size();
     }
 
     usize BulkStream::Read(void* ptr, usize len)
     {
-        if (!here_.valid())
+        if (here_ < 0)
             return 0;
 
-        usize result = input_->ReadBulk(ptr, len, here_.get());
+        usize result = input_->ReadBulk(ptr, len, here_);
 
-        here_ += u64(result);
+        here_ += result;
 
         return result;
     }

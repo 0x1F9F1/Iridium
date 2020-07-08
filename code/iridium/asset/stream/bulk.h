@@ -9,10 +9,10 @@ namespace Iridium
     public:
         BulkStream(Rc<Stream> handle);
 
-        StreamPosition Seek(i64 offset, SeekWhence whence) override;
+        i64 Seek(i64 offset, SeekWhence whence) override;
 
-        StreamPosition Tell() override;
-        StreamPosition Size() override;
+        i64 Tell() override;
+        i64 Size() override;
 
         usize Read(void* ptr, usize len) override;
         usize ReadBulk(void* ptr, usize len, u64 offset) override;
@@ -22,7 +22,7 @@ namespace Iridium
         Rc<Stream> GetBulkStream(u64& offset, u64 size) override;
 
     private:
-        StreamPosition here_ {0_u64};
+        i64 here_ {0};
 
         Rc<Stream> input_ {nullptr};
     };

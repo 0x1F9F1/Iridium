@@ -17,12 +17,12 @@ namespace Iridium
         FlushWrites();
     }
 
-    StreamPosition BufferedStream::Size()
+    i64 BufferedStream::Size()
     {
-        return FlushWrites() ? handle_->Size() : StreamPosition();
+        return FlushWrites() ? handle_->Size() : -1;
     }
 
-    StreamPosition BufferedStream::Seek(i64 offset, SeekWhence whence)
+    i64 BufferedStream::Seek(i64 offset, SeekWhence whence)
     {
         if (buffer_read_ != 0)
         {
@@ -30,8 +30,8 @@ namespace Iridium
 
             switch (whence) // Calculate the offset relative to the start of the buffer
             {
-                case SeekWhence::End: rel_offset += handle_->Size().get(); [[fallthrough]];
-                case SeekWhence::Set: rel_offset -= position_.get(); break;
+                case SeekWhence::End: rel_offset += handle_->Size(); [[fallthrough]];
+                case SeekWhence::Set: rel_offset -= position_; break;
                 case SeekWhence::Cur: rel_offset += buffer_head_; break;
             }
 
@@ -49,7 +49,7 @@ namespace Iridium
         }
         else if (!FlushWrites())
         {
-            return StreamPosition();
+            return -1;
         }
 
         position_ = handle_->Seek(offset, whence);
@@ -62,7 +62,7 @@ namespace Iridium
 
     usize BufferedStream::Read(void* ptr, usize len)
     {
-        if (!position_.valid() || !FlushWrites())
+        if ((position_ < 0) || !FlushWrites())
         {
             return 0;
         }
@@ -114,7 +114,7 @@ namespace Iridium
 
     usize BufferedStream::Write(const void* ptr, usize len)
     {
-        if (!position_.valid() || !FlushReads())
+        if ((position_ < 0) || !FlushReads())
         {
             return 0;
         }
@@ -173,7 +173,7 @@ namespace Iridium
             return 0;
         }
 
-        position_ = StreamPosition();
+        position_ = -1;
 
         return handle_->ReadBulk(ptr, len, offset);
     }
@@ -185,7 +185,7 @@ namespace Iridium
             return 0;
         }
 
-        position_ = StreamPosition();
+        position_ = -1;
 
         return handle_->WriteBulk(ptr, len, offset);
     }
@@ -234,15 +234,15 @@ namespace Iridium
 
     IR_FORCEINLINE bool BufferedStream::FlushReads()
     {
-        if (buffer_read_ != 0 && buffer_read_ != buffer_head_ && position_.valid())
+        if (buffer_read_ != 0 && buffer_read_ != buffer_head_ && position_ >= 0)
         {
-            position_ = handle_->Seek(position_.get() + buffer_head_, SeekWhence::Set);
+            position_ = handle_->Seek(position_ + buffer_head_, SeekWhence::Set);
 
             buffer_head_ = 0;
             buffer_read_ = 0;
         }
 
-        return position_.valid();
+        return position_ >= 0;
     }
 
     IR_FORCEINLINE bool BufferedStream::FlushWrites()
@@ -256,7 +256,7 @@ namespace Iridium
 
         bool success = written == buffer_head_;
 
-        position_ += u64(written);
+        position_ += written;
         buffer_head_ = 0;
 
         return success;
