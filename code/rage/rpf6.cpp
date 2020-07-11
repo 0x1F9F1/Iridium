@@ -92,7 +92,7 @@ namespace Iridium::Rage
 
         if (header_.Magic == 0x36465052)
         {
-            bits::bswap(header_.Magic, header_.EntryCount, header_.NamesOffset, header_.DecryptionTag);
+            bits::bswapv(header_.Magic, header_.EntryCount, header_.NamesOffset, header_.DecryptionTag);
 
             swap_endian = true;
         }
@@ -119,7 +119,7 @@ namespace Iridium::Rage
         {
             for (fiPackEntry6& entry : entries_)
             {
-                bits::bswap(entry.dword0, entry.dword4, entry.dword8, entry.dwordC, entry.dword10);
+                bits::bswapv(entry.dword0, entry.dword4, entry.dword8, entry.dwordC, entry.dword10);
             }
         }
 

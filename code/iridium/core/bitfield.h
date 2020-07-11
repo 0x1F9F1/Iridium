@@ -64,7 +64,7 @@ namespace Iridium
 
         IR_FORCEINLINE bit_field& operator=(Type value)
         {
-            value_ = (value_ & ~ShiftedMask) | ((value << Index) & ShiftedMask);
+            value_ = (value_ & ~ShiftedMask) | ((static_cast<T>(value) << Index) & ShiftedMask);
 
             return *this;
         }
@@ -87,7 +87,8 @@ namespace Iridium
     class bit_field<T, Index, 1, bool>
     {
     public:
-        static constexpr T ShiftedMask = T(1) << Index;
+        static constexpr T Mask = 0x1;
+        static constexpr T ShiftedMask = Mask << Index;
 
         using Type = bool;
 
@@ -103,14 +104,14 @@ namespace Iridium
 
         IR_FORCEINLINE bit_field& operator=(Type value)
         {
-            value_ = (value_ & ~ShiftedMask) | (T(value) << Index);
+            value_ = (value_ & ~ShiftedMask) | (static_cast<T>(value) << Index);
 
             return *this;
         }
 
         IR_FORCEINLINE operator Type() const
         {
-            return value_ & ShiftedMask;
+            return (value_ & ShiftedMask) != 0;
         }
 
     private:

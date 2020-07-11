@@ -198,7 +198,7 @@ namespace Iridium::Rage
 
         if (header_.Magic == 0x37465052)
         {
-            bits::bswap(header_.Magic, header_.EntryCount, header_.NamesLength, header_.DecryptionTag);
+            bits::bswapv(header_.Magic, header_.EntryCount, header_.NamesLength, header_.DecryptionTag);
             swap_endian = true;
 
             switch (header_.DecryptionTag)
@@ -262,7 +262,7 @@ namespace Iridium::Rage
         {
             if (swap_endian)
             {
-                bits::bswap(entry.qword0, entry.dword8, entry.dwordC);
+                bits::bswapv(entry.qword0, entry.dword8, entry.dwordC);
             }
 
             if (!entry.IsDirectory() && !entry.IsResource() && entry.GetDecryptionTag() == 1)
