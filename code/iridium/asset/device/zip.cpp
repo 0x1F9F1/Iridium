@@ -299,7 +299,7 @@ namespace Iridium
         if (!stream.TrySeek(cd_offset_))
             return false;
 
-        vfs_.Reserve(cd_entries_);
+        vfs_.Reserve(static_cast<usize>(cd_entries_));
 
         String entry_name;
         entry_name.reserve(128);
